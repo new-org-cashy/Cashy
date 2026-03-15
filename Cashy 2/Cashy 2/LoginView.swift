@@ -74,20 +74,22 @@ struct LoginView: View {
                     }
                     .padding(.horizontal)
                     
-                    // MARK: Anmelden Button
-                    Button(action: {}) {
-                        Text("Anmelden")
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(brownColor)
-                            .foregroundColor(.white)
-                            .cornerRadius(20)
-                            .fontWeight(.semibold)
+                    NavigationLink(destination:Fragen()){
+                        // MARK: Anmelden Button
+                        Button(action: {}) {
+                            Text("Anmelden")
+                                .frame(maxWidth: .infinity)
+                                .padding()
+                                .background(brownColor)
+                                .foregroundColor(.white)
+                                .cornerRadius(20)
+                                .fontWeight(.semibold)
+                        }
+                        
+                        .padding(.horizontal)
+                        .disabled(email.isEmpty || password.isEmpty)
+                        .opacity(email.isEmpty || password.isEmpty ? 0.5 : 1.0)
                     }
-                    .padding(.horizontal)
-                    .disabled(email.isEmpty || password.isEmpty)
-                    .opacity(email.isEmpty || password.isEmpty ? 0.5 : 1.0)
-                    
                     Spacer()
                     
                     // MARK: Registrieren Link
