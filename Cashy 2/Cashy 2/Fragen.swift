@@ -289,7 +289,7 @@ struct SparZielView: View {
         .ignoresSafeArea(.container, edges: .bottom)
 
         .navigationDestination(isPresented: $goToIncome) {
-            
+            HomeView()
         }
 
     }
