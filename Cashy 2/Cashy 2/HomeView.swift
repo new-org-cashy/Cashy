@@ -156,7 +156,7 @@ struct HomeView: View { // Hauptseite der App
 
                             Spacer()
 
-                            NavigationLink(destination: ZielView()) {
+                            NavigationLink(destination: ContentView()) {
                                 Text("Ausgaben >")
                                     .font(.subheadline)
                                     .foregroundColor(.gray)
