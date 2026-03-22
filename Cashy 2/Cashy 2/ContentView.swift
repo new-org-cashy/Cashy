@@ -1,298 +1,337 @@
 import SwiftUI
 
-// MARK: EXPENSE MODEL
-
-struct Expense: Identifiable {
-    let id = UUID()
-    var name: String
-    var amount: Double
-}
-
-// MARK: CATEGORY MODEL
-
-struct Category: Identifiable {
-    let id = UUID()
-    var name: String
-    var color: Color
-    var expenses: [Expense] = []
-    
-    var amount: Double {
-        expenses.map{$0.amount}.reduce(0,+)
-    }
-}
-
-// MARK: MAIN VIEW
-
 struct ContentView: View {
-    
-    @State private var categories: [Category] = [
-        Category(name: "Skincare", color: Color(red: 0.55, green: 0.70, blue: 0.55)),
-        Category(name: "Make-Up", color: Color(red: 0.45, green: 0.65, blue: 0.50)),
-        Category(name: "Drogen", color: Color(red: 0.40, green: 0.60, blue: 0.45)),
-        Category(name: "Snacks", color: Color(red: 0.35, green: 0.50, blue: 0.30)),
-        Category(name: "Abos", color: Color(red: 0.55, green: 0.50, blue: 0.35)),
-        Category(name: "Kleidung", color: Color(red: 0.50, green: 0.45, blue: 0.30))
-    ]
-    
-    @State private var selectedIndex = 0
+    @EnvironmentObject private var appData: AppData
+    @Environment(\.dismiss) private var dismiss
+
+    @State private var selectedCategoryID: Category.ID?
     @State private var showAddExpense = false
     @State private var showNewCategory = false
-    
+    @State private var renameCategoryID: Category.ID?
+    @State private var renameDraft = ""
+    @State private var showRenamePrompt = false
+    @State private var showSecondRenameConfirmation = false
+
     var body: some View {
-        
-        NavigationStack {
-            
-            ZStack {
-                
-                Color(red: 0.85, green: 0.93, blue: 0.82)
-                    .ignoresSafeArea()
-                
-                VStack {
-                    
-                    HStack {
-                        
-                        HStack {
-                            Image(systemName: "xmark.circle.fill")
-                            Text("Ausgaben")
+        ZStack {
+            Color(red: 0.85, green: 0.93, blue: 0.82)
+                .ignoresSafeArea()
+
+            VStack {
+                HStack {
+                    NavigationLink(destination: ViewPage()) {
+                        HStack(spacing: 10) {
+                            Image(systemName: "chart.pie.fill")
+                                .font(.title2)
+                            Text("Ansicht")
+                                .font(.headline)
                         }
-                        .padding(8)
-                        .background(Color.red.opacity(0.8))
+                        .padding(.vertical, 12)
+                        .padding(.horizontal, 16)
+                        .background(Color.orange.opacity(0.9))
                         .foregroundColor(.white)
-                        .cornerRadius(20)
-                        
-                        Spacer()
-                        
-                        NavigationLink(destination: ViewPage(categories: $categories)) {
-                            HStack {
-                                Image(systemName: "chart.pie.fill")
-                                Text("Ansicht")
-                            }
-                            .padding(8)
-                            .background(Color.orange.opacity(0.8))
-                            .foregroundColor(.white)
-                            .cornerRadius(20)
-                        }
+                        .cornerRadius(24)
                     }
-                    .padding()
-                    
-                    ScrollView {
-                        
-                        VStack(spacing: 14) {
-                            
-                            ForEach(categories.indices, id:\.self) { i in
-                                
-                                HStack {
-                                    
-                                    NavigationLink(
-                                        destination: ExpenseListView(category: $categories[i])
-                                    ) {
-                                        Text(categories[i].name)
-                                            .font(.title2)
-                                            .bold()
-                                            .foregroundColor(.white)
-                                    }
-                                    
-                                    Spacer()
-                                    
-                                    Button {
-                                        selectedIndex = i
-                                        showAddExpense = true
-                                    } label: {
-                                        Image(systemName: "plus.circle.fill")
-                                            .font(.title2)
-                                            .foregroundColor(.white)
-                                    }
-                                    
-                                    Button {
-                                        categories.remove(at: i)
-                                    } label: {
-                                        Image(systemName: "trash")
-                                            .foregroundColor(.white)
-                                    }
-                                }
-                                .padding()
-                                .frame(maxWidth: .infinity)
-                                .background(categories[i].color)
-                                .cornerRadius(16)
-                                .padding(.horizontal)
-                            }
-                            
-                            Button {
-                                showNewCategory = true
-                            } label: {
-                                HStack {
-                                    Image(systemName: "plus")
-                                    Text("Neue Kategorie")
-                                }
-                                .padding()
-                                .frame(maxWidth: .infinity)
-                                .background(Color.gray.opacity(0.4))
-                                .cornerRadius(16)
-                                .padding(.horizontal)
-                            }
-                        }
-                    }
-                    
-                    Spacer()
+                    .buttonStyle(.plain)
                 }
+                .padding(.horizontal)
+                .padding(.top, 8)
+
+                ScrollView {
+                    VStack(spacing: 14) {
+                        ForEach(appData.categories.indices, id: \.self) { index in
+                            let category = appData.categories[index]
+                            CategoryCard(
+                                category: category,
+                                currencyFormatter: appData.formatCurrency,
+                                onAddExpense: {
+                                    selectedCategoryID = category.id
+                                    showAddExpense = true
+                                },
+                                onDelete: {
+                                    appData.deleteCategory(at: index)
+                                },
+                                onRename: {
+                                    renameCategoryID = category.id
+                                    renameDraft = category.name
+                                    showRenamePrompt = true
+                                }
+                            )
+                        }
+
+                        Button {
+                            showNewCategory = true
+                        } label: {
+                            HStack {
+                                Image(systemName: "plus")
+                                Text("Neue Kategorie")
+                            }
+                            .padding()
+                            .frame(maxWidth: .infinity)
+                            .background(Color.gray.opacity(0.4))
+                            .cornerRadius(16)
+                            .padding(.horizontal)
+                        }
+                    }
+                }
+
+                Spacer()
             }
         }
         .sheet(isPresented: $showAddExpense) {
-            AddExpenseView(categories: $categories, index: selectedIndex)
+            if let selectedCategoryID = selectedCategoryID {
+                AddExpenseView(categoryID: selectedCategoryID)
+                    .environmentObject(appData)
+            }
         }
         .sheet(isPresented: $showNewCategory) {
-            NewCategoryView(categories: $categories)
+            NewCategoryView()
+                .environmentObject(appData)
+        }
+        .alert("Kategorie umbenennen", isPresented: $showRenamePrompt) {
+            TextField("Neuer Name", text: $renameDraft)
+
+            Button("Abbrechen", role: .cancel) {
+                renameDraft = ""
+                renameCategoryID = nil
+            }
+
+            Button("1. Bestätigen") {
+                showSecondRenameConfirmation = true
+            }
+        } message: {
+            Text("Halte die Kategorie gedrückt, um den Namen zu ändern. Die Änderung wird erst nach einer zweiten Bestätigung gespeichert.")
+        }
+        .alert("Wirklich umbenennen?", isPresented: $showSecondRenameConfirmation) {
+            Button("Nein", role: .cancel) {
+                renameDraft = ""
+                renameCategoryID = nil
+            }
+
+            Button("2. Bestätigen") {
+                if let renameCategoryID = renameCategoryID {
+                    appData.renameCategory(categoryID: renameCategoryID, to: renameDraft)
+                }
+                renameDraft = ""
+                renameCategoryID = nil
+            }
+        } message: {
+            Text("Der neue Name wird auf \(renameDraft.isEmpty ? "die Kategorie" : renameDraft) geändert.")
         }
     }
 }
 
-// MARK: ADD EXPENSE
+private struct CategoryCard: View {
+    let category: Category
+    let currencyFormatter: (Double) -> String
+    let onAddExpense: () -> Void
+    let onDelete: () -> Void
+    let onRename: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                NavigationLink(destination: ExpenseListView(categoryID: category.id)) {
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(category.name)
+                            .font(.title2)
+                            .bold()
+                            .foregroundColor(.white)
+
+                        Text(currencyFormatter(category.amount))
+                            .foregroundColor(.white.opacity(0.9))
+                    }
+                }
+
+                Spacer()
+
+                Button(action: onAddExpense) {
+                    Image(systemName: "plus.circle.fill")
+                        .font(.title2)
+                        .foregroundColor(.white)
+                }
+
+                Button(action: onDelete) {
+                    Image(systemName: "trash")
+                        .foregroundColor(.white)
+                }
+            }
+
+            if category.expenses.isEmpty {
+                Text("Noch keine Ausgaben in dieser Kategorie.")
+                    .font(.caption)
+                    .foregroundColor(.white.opacity(0.85))
+            } else {
+                VStack(alignment: .leading, spacing: 6) {
+                    ForEach(Array(category.expenses.prefix(3))) { expense in
+                        HStack {
+                            Text(expense.name)
+                            Spacer()
+                            Text(currencyFormatter(expense.amount))
+                        }
+                        .font(.caption)
+                        .foregroundColor(.white.opacity(0.9))
+                    }
+                }
+            }
+        }
+        .padding()
+        .frame(maxWidth: .infinity)
+        .background(category.color)
+        .cornerRadius(16)
+        .padding(.horizontal)
+        .contentShape(Rectangle())
+        .onLongPressGesture {
+            onRename()
+        }
+    }
+}
 
 struct AddExpenseView: View {
-    
-    @Binding var categories: [Category]
-    var index: Int
-    
+    @EnvironmentObject private var appData: AppData
+    @Environment(\.dismiss) private var dismiss
+
+    let categoryID: Category.ID
+
     @State private var item = ""
     @State private var amount = ""
-    
-    @Environment(\.dismiss) var dismiss
-    
+
+    private var categoryName: String {
+        appData.categories.first(where: { $0.id == categoryID })?.name ?? "Kategorie"
+    }
+
+    private var canSave: Bool {
+        let normalizedAmount = amount.replacingOccurrences(of: ",", with: ".")
+        return !item.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && Double(normalizedAmount) != nil
+    }
+
     var body: some View {
-        
         ZStack {
-            
             Color(red: 0.85, green: 0.93, blue: 0.82)
                 .ignoresSafeArea()
-            
+
             VStack(spacing: 20) {
-                
                 Text("Neue Ausgabe")
                     .font(.largeTitle)
                     .bold()
-                
-                Text("Kategorie: \(categories[index].name)")
-                
+
+                Text("Kategorie: \(categoryName)")
+
                 TextField("Was hast du gekauft?", text: $item)
                     .textFieldStyle(.roundedBorder)
                     .padding(.horizontal)
-                
-                TextField("Betrag €", text: $amount)
+
+                TextField("Betrag (\(appData.selectedCurrencyCode))", text: $amount)
                     .textFieldStyle(.roundedBorder)
                     .padding(.horizontal)
                     .keyboardType(.decimalPad)
-                
+
                 Button("Speichern") {
-                    
-                    if let value = Double(amount) {
-                        let newExpense = Expense(name: item, amount: value)
-                        categories[index].expenses.append(newExpense)
+                    let normalizedAmount = amount.replacingOccurrences(of: ",", with: ".")
+                    if let value = Double(normalizedAmount) {
+                        appData.addExpense(name: item, amount: value, to: categoryID)
                     }
-                    
                     dismiss()
                 }
                 .padding()
                 .background(Color.green)
                 .foregroundColor(.white)
                 .cornerRadius(10)
+                .disabled(!canSave)
+                .opacity(canSave ? 1 : 0.5)
             }
         }
     }
 }
 
-// MARK: EXPENSE LIST
-
 struct ExpenseListView: View {
-    
-    @Binding var category: Category
-    
+    @EnvironmentObject private var appData: AppData
+
+    let categoryID: Category.ID
+
+    private var category: Category? {
+        appData.categories.first(where: { $0.id == categoryID })
+    }
+
+    private var expenses: [Expense] {
+        category?.expenses ?? []
+    }
+
     var body: some View {
-        
         ZStack {
-            
             Color(red: 0.85, green: 0.93, blue: 0.82)
                 .ignoresSafeArea()
-            
+
             VStack {
-                
-                Text(category.name)
+                Text(category?.name ?? "Kategorie")
                     .font(.largeTitle)
                     .bold()
-                    .padding(.bottom,20)
-                
+                    .padding(.bottom, 20)
+
                 ScrollView {
-                    
-                    VStack(spacing:12) {
-                        
-                        ForEach(category.expenses) { expense in
-                            
-                            HStack {
-                                
-                                Text(expense.name)
-                                
-                                Spacer()
-                                
-                                Text("\(Int(expense.amount))€")
-                                    .bold()
-                                
-                                Button {
-                                    if let index = category.expenses.firstIndex(where: {$0.id == expense.id}) {
-                                        category.expenses.remove(at: index)
+                    VStack(spacing: 12) {
+                        if expenses.isEmpty {
+                            Text("Noch keine Ausgaben eingetragen.")
+                                .foregroundColor(.gray)
+                                .padding(.top, 30)
+                        } else {
+                            ForEach(expenses) { expense in
+                                HStack {
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text(expense.name)
+                                        Text(appData.comparisonText(for: expense.amount))
+                                            .font(.caption)
+                                            .foregroundColor(.gray)
                                     }
-                                } label: {
-                                    Image(systemName: "trash")
+
+                                    Spacer()
+
+                                    Text(appData.formatExpense(expense.amount))
+                                        .bold()
+
+                                    Button {
+                                        appData.deleteExpense(expenseID: expense.id, from: categoryID)
+                                    } label: {
+                                        Image(systemName: "trash")
+                                    }
                                 }
+                                .padding()
+                                .background(Color.white)
+                                .cornerRadius(12)
+                                .padding(.horizontal)
                             }
-                            .padding()
-                            .background(Color.white)
-                            .cornerRadius(12)
-                            .padding(.horizontal)
                         }
                     }
                 }
-                
+
                 Spacer()
             }
         }
     }
 }
 
-// MARK: NEW CATEGORY
-
 struct NewCategoryView: View {
-    
-    @Binding var categories: [Category]
-    
+    @EnvironmentObject private var appData: AppData
+    @Environment(\.dismiss) private var dismiss
+
     @State private var name = ""
-    
-    @Environment(\.dismiss) var dismiss
-    
+
     var body: some View {
-        
         ZStack {
-            
             Color(red: 0.85, green: 0.93, blue: 0.82)
                 .ignoresSafeArea()
-            
+
             VStack(spacing: 20) {
-                
                 Text("Neue Kategorie")
                     .font(.largeTitle)
                     .bold()
-                
+
                 TextField("Name", text: $name)
                     .textFieldStyle(.roundedBorder)
                     .padding(.horizontal)
-                
+
                 Button("Speichern") {
-                    
-                    let newCategory = Category(
-                        name: name,
-                        color: .gray
-                    )
-                    
-                    categories.append(newCategory)
-                    
+                    appData.addCategory(named: name)
                     dismiss()
                 }
                 .padding()
@@ -304,124 +343,124 @@ struct NewCategoryView: View {
     }
 }
 
-// MARK: VIEW PAGE
-
 struct ViewPage: View {
-    
-    @Binding var categories: [Category]
-    
+    @EnvironmentObject private var appData: AppData
+
     var total: Double {
-        categories.map{$0.amount}.reduce(0,+)
+        appData.categories.map { $0.amount }.reduce(0, +)
     }
-    
+
     var body: some View {
-        
         ZStack {
-            
             Color(red: 0.85, green: 0.93, blue: 0.82)
                 .ignoresSafeArea()
-            
+
             VStack {
-                
                 Text("Ansicht")
                     .font(.largeTitle)
                     .bold()
-                    .padding(.bottom,30)
-                
-                DonutChart(categories: categories)
-                    .frame(width:220,height:220)
-                
+                    .padding(.bottom, 30)
+
+                DonutChart(categories: appData.categories)
+                    .frame(width: 220, height: 220)
+
                 ScrollView {
-                    
-                    VStack(spacing:14) {
-                        
-                        ForEach(categories.indices, id:\.self) { i in
-                            
-                            HStack {
-                                
-                                Circle()
-                                    .fill(categories[i].color)
-                                    .frame(width:14,height:14)
-                                
-                                Text(categories[i].name)
-                                    .font(.title3)
-                                
-                                Spacer()
-                                
-                                Text("\(Int(categories[i].amount))€")
-                                    .font(.title2)
-                                    .bold()
+                    VStack(spacing: 14) {
+                        ForEach(appData.categories) { category in
+                            VStack(alignment: .leading, spacing: 8) {
+                                HStack {
+                                    Circle()
+                                        .fill(category.color)
+                                        .frame(width: 14, height: 14)
+
+                                    Text(category.name)
+                                        .font(.title3)
+
+                                    Spacer()
+
+                                    Text(appData.formatCurrency(category.amount))
+                                        .font(.title3)
+                                        .bold()
+                                }
+
+                                if category.expenses.isEmpty {
+                                    Text("Noch keine Einträge")
+                                        .font(.caption)
+                                        .foregroundColor(.gray)
+                                } else {
+                                    ForEach(Array(category.expenses.prefix(2))) { expense in
+                                        HStack {
+                                            Text(expense.name)
+                                            Spacer()
+                                            Text(appData.formatCurrency(expense.amount))
+                                        }
+                                        .font(.caption)
+                                        .foregroundColor(.gray)
+                                    }
+                                }
                             }
                             .padding(.horizontal)
-                            .padding(.vertical,8)
+                            .padding(.vertical, 8)
                         }
                     }
-                    .padding(.top,25)
+                    .padding(.top, 25)
                 }
-                
+
                 Spacer()
             }
         }
     }
 }
 
-// MARK: DONUT CHART
-
 struct DonutChart: View {
-    
+    @EnvironmentObject private var appData: AppData
+
     var categories: [Category]
-    
+
     var total: Double {
-        categories.map{$0.amount}.reduce(0,+)
+        categories.map { $0.amount }.reduce(0, +)
     }
-    
+
     var body: some View {
-        
         ZStack {
-            
             if total == 0 {
-                
                 Circle()
                     .stroke(Color.gray.opacity(0.3), lineWidth: 40)
-                
-                Text("0€")
-                    .font(.title)
+
+                Text(appData.formatCurrency(0))
+                    .font(.title3)
                     .bold()
-                
             } else {
-                
-                ForEach(0..<categories.count, id:\.self) { i in
-                    
-                    if categories[i].amount > 0 {
-                        
+                ForEach(0..<categories.count, id: \.self) { index in
+                    if categories[index].amount > 0 {
                         Circle()
-                            .trim(
-                                from: startAngle(for: i),
-                                to: endAngle(for: i)
-                            )
-                            .stroke(
-                                categories[i].color,
-                                style: StrokeStyle(lineWidth: 40)
-                            )
+                            .trim(from: startAngle(for: index), to: endAngle(for: index))
+                            .stroke(categories[index].color, style: StrokeStyle(lineWidth: 40))
                             .rotationEffect(.degrees(-90))
                     }
                 }
-                
-                Text("\(Int(total))€")
-                    .font(.title)
+
+                Text(appData.formatCurrency(total))
+                    .font(.title3)
                     .bold()
             }
         }
     }
-    
+
     func startAngle(for index: Int) -> CGFloat {
-        let previous = categories.prefix(index).map{$0.amount}.reduce(0,+)
+        let previous = categories.prefix(index).map { $0.amount }.reduce(0, +)
         return previous / total
     }
-    
+
     func endAngle(for index: Int) -> CGFloat {
-        let current = categories.prefix(index+1).map{$0.amount}.reduce(0,+)
+        let current = categories.prefix(index + 1).map { $0.amount }.reduce(0, +)
         return current / total
     }
 }
 
+#Preview {
+    NavigationStack {
+        ContentView()
+            .environmentObject(AppData())
+    }
+}

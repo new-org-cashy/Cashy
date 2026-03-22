@@ -1,5 +1,6 @@
 import SwiftUI // Importiert SwiftUI für UI-Elemente
 import PhotosUI // Importiert PhotosUI, damit man Fotos aus der Galerie auswählen kann
+import UIKit
 
 // MARK: - AccountView
 struct AccountView: View { // Haupt-View für das Benutzerkonto
@@ -171,4 +172,3 @@ struct AccountView: View { // Haupt-View für das Benutzerkonto
         AccountView() // Vorschau für AccountView
     }
 }
-
