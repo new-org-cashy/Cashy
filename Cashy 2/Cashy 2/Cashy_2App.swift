@@ -1,5 +1,6 @@
 import SwiftUI
 
+
 @main
 struct Cashy_2_App: App {
     @StateObject private var appData = AppData()

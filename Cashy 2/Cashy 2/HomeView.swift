@@ -147,18 +147,7 @@ struct HomeView: View {
 
                         Spacer()
 
-                        NavigationLink(destination: ContentView()) {
-                            Text("Ausgaben >")
-                                .font(.subheadline)
-                                .foregroundColor(.gray)
-                                .scaleEffect(pressedAusgaben ? 0.95 : 1.0)
-                                .animation(.easeInOut(duration: 0.1), value: pressedAusgaben)
-                        }
-                        .simultaneousGesture(
-                            DragGesture(minimumDistance: 0)
-                                .onChanged { _ in pressedAusgaben = true }
-                                .onEnded { _ in pressedAusgaben = false }
-                        )
+                        
                     }
                 }
                 .padding()
@@ -227,7 +216,7 @@ struct HomeView: View {
                     )
                     .frame(maxWidth: .infinity, alignment: .leading)
 
-                    NavigationLink(destination: CartView()) {
+                    NavigationLink(destination: ContentView()) {
                         Image(systemName: "cart")
                             .foregroundColor(.black)
                             .scaleEffect(pressedCart ? 0.9 : 1.0)
