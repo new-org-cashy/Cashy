@@ -217,7 +217,7 @@ struct HomeView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
 
                     NavigationLink(destination: ContentView()) {
-                        Image(systemName: "cart")
+                        Image(systemName: "creditcard")
                             .foregroundColor(.black)
                             .scaleEffect(pressedCart ? 0.9 : 1.0)
                             .animation(.easeInOut(duration: 0.1), value: pressedCart)
