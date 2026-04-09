@@ -8,8 +8,9 @@ struct VirtuelleWeltView: View { var body: some View { Text("Virtuelle Welt").fo
 
 struct ActivityRow: View {
     let title: String
-    let comparison: String
+    let detail: String
     let amount: String
+    let amountColor: Color
 
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
@@ -18,8 +19,8 @@ struct ActivityRow: View {
                     .font(.subheadline)
                     .foregroundColor(.black)
 
-                if !comparison.isEmpty {
-                    Text(comparison)
+                if !detail.isEmpty {
+                    Text(detail)
                         .font(.caption)
                         .foregroundColor(.gray)
                 }
@@ -28,7 +29,7 @@ struct ActivityRow: View {
             Spacer()
 
             Text(amount)
-                .foregroundColor(.red)
+                .foregroundColor(amountColor)
                 .fontWeight(.semibold)
         }
         .padding(.vertical, 10)
@@ -70,6 +71,8 @@ struct HomeView: View {
     @State private var pressedSettings = false
     @State private var showGoalSheet = false
     @State private var goalDraft = ""
+    @State private var showSavedAmountSheet = false
+    @State private var savedAmountDraft = ""
 
     var body: some View {
         ZStack {
@@ -115,10 +118,16 @@ struct HomeView: View {
                         .font(.subheadline)
                         .foregroundColor(.gray)
 
-                    Text(appData.formatCurrency(appData.currentSavings))
-                        .font(.largeTitle)
-                        .fontWeight(.bold)
-                        .foregroundColor(.black)
+                    Button {
+                        savedAmountDraft = ""
+                        showSavedAmountSheet = true
+                    } label: {
+                        Text(appData.formatCurrency(appData.currentSavings))
+                            .font(.largeTitle)
+                            .fontWeight(.bold)
+                            .foregroundColor(.black)
+                    }
+                    .buttonStyle(.plain)
 
                     ProgressView(value: appData.savingsProgress)
                         .tint(.green)
@@ -162,21 +171,22 @@ struct HomeView: View {
                             .font(.headline)
                             .padding(.horizontal)
 
-                        if appData.expenseActivities.isEmpty {
-                            Text("Noch keine Ausgaben eingetragen.")
+                        if appData.timelineActivities.isEmpty {
+                            Text("Noch kein Sparstand oder Ausgaben eingetragen.")
                                 .foregroundColor(.gray)
                                 .padding(.horizontal)
                                 .padding(.vertical, 20)
                         } else {
                             VStack(spacing: 1) {
-                                ForEach(Array(appData.expenseActivities.prefix(12).enumerated()), id: \.element.id) { index, activity in
+                                ForEach(Array(appData.timelineActivities.prefix(12).enumerated()), id: \.element.id) { index, activity in
                                     ActivityRow(
                                         title: activity.title,
-                                        comparison: activity.comparison,
-                                        amount: appData.formatExpense(activity.amount)
+                                        detail: activity.detail,
+                                        amount: formattedTimelineAmount(activity.amount),
+                                        amountColor: activity.isPositive ? .green : .red
                                     )
 
-                                    if index < min(appData.expenseActivities.count, 12) - 1 {
+                                    if index < min(appData.timelineActivities.count, 12) - 1 {
                                         Divider()
                                             .background(Color.gray.opacity(0.15))
                                     }
@@ -184,6 +194,7 @@ struct HomeView: View {
                             }
                         }
                     }
+                    .frame(maxWidth: .infinity, minHeight: 260, alignment: .topLeading)
                 }
                 .padding()
                 .background(Color.green.opacity(0.18))
@@ -196,6 +207,9 @@ struct HomeView: View {
         }
         .sheet(isPresented: $showGoalSheet) {
             GoalEditSheet(goalDraft: $goalDraft)
+        }
+        .sheet(isPresented: $showSavedAmountSheet) {
+            SavedAmountSheet(savedAmountDraft: $savedAmountDraft)
         }
         .safeAreaInset(edge: .bottom) {
             VStack(spacing: 5) {
@@ -256,6 +270,13 @@ struct HomeView: View {
         }
         return String(value)
     }
+
+    private func formattedTimelineAmount(_ value: Double) -> String {
+        if value >= 0 {
+            return "+\(appData.formatCurrency(value))"
+        }
+        return "-\(appData.formatCurrency(abs(value)))"
+    }
 }
 
 struct GoalEditSheet: View {
@@ -294,6 +315,56 @@ struct GoalEditSheet: View {
                         let normalizedGoal = goalDraft.replacingOccurrences(of: ",", with: ".")
                         if let goalValue = Double(normalizedGoal) {
                             appData.updateSavingsGoal(goalValue)
+                        }
+                        dismiss()
+                    }
+                }
+            }
+        }
+        .presentationDetents([.medium])
+    }
+}
+
+struct SavedAmountSheet: View {
+    @EnvironmentObject private var appData: AppData
+    @Environment(\.dismiss) private var dismiss
+
+    @Binding var savedAmountDraft: String
+
+    var body: some View {
+        NavigationStack {
+            VStack(alignment: .leading, spacing: 20) {
+                Text("Zusätzlich gesparten Betrag eintragen")
+                    .font(.title2)
+                    .fontWeight(.bold)
+
+                Text("Aktuell gespart: \(appData.formatCurrency(appData.currentSavings))")
+                    .font(.subheadline)
+                    .foregroundColor(.gray)
+
+                TextField("Wie viel hast du extra gespart?", text: $savedAmountDraft)
+                    .textFieldStyle(.roundedBorder)
+                    .keyboardType(.decimalPad)
+
+                Text("Dieser Betrag wird auf den bisherigen Sparstand addiert und danach auf Home, im Verlauf und in den Statistiken angezeigt.")
+                    .font(.footnote)
+                    .foregroundColor(.gray)
+
+                Spacer()
+            }
+            .padding()
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Abbrechen") {
+                        dismiss()
+                    }
+                }
+
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Speichern") {
+                        let normalizedAmount = savedAmountDraft.replacingOccurrences(of: ",", with: ".")
+                        if let newAmount = Double(normalizedAmount) {
+                            appData.addSavedAmount(newAmount)
                         }
                         dismiss()
                     }

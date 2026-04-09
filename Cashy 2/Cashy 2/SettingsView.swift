@@ -3,6 +3,7 @@ import SwiftUI // Importiert das SwiftUI Framework für UI-Elemente
 // MARK: - SettingsView
 struct SettingsView: View { // Haupt-View für die Einstellungen
 
+    @EnvironmentObject private var appData: AppData
     @Environment(\.dismiss) var dismiss // Ermöglicht das Schließen der View
     @State private var searchText: String = "" // Text im Suchfeld
     @State private var showSearch: Bool = false // Zeigt an, ob das Suchfeld sichtbar ist
@@ -17,7 +18,8 @@ struct SettingsView: View { // Haupt-View für die Einstellungen
         ("questionmark.circle", "Hilfe-Center"),
         ("star", "Feedback geben"),
         ("info.circle", "Über Cashy"),
-        ("arrow.backward.circle", "Abmelden")
+        ("arrow.backward.circle", "Abmelden"),
+        ("trash", "Konto löschen")
     ]
 
     // Filtert die Einstellungen basierend auf dem Suchtext
@@ -118,8 +120,12 @@ struct SettingsView: View { // Haupt-View für die Einstellungen
 // MARK: - SettingsRow
 struct SettingsRow: View { // Zeile für eine Einstellung
 
+    @EnvironmentObject private var appData: AppData
+
     let icon: String // Icon-Name
     let title: String // Titel der Einstellung
+    @State private var showLogoutAlert = false
+    @State private var showDeleteAccountSheet = false
 
     @ViewBuilder
     var destination: some View {
@@ -137,7 +143,37 @@ struct SettingsRow: View { // Zeile für eine Einstellung
         }
     }
     var body: some View {
-        NavigationLink(destination: destination) { // Klickbarer Navigations-Link
+        if title == "Abmelden" {
+            Button {
+                showLogoutAlert = true
+            } label: {
+                rowContent(showChevron: false)
+            }
+            .alert("Abmelden?", isPresented: $showLogoutAlert) {
+                Button("Abbrechen", role: .cancel) { }
+                Button("Abmelden", role: .destructive) {
+                    appData.logout()
+                }
+            } message: {
+                Text("Du wirst aus der App abgemeldet und musst dich erneut anmelden.")
+            }
+        } else if title == "Konto löschen" {
+            Button {
+                showDeleteAccountSheet = true
+            } label: {
+                rowContent(showChevron: false)
+            }
+            .sheet(isPresented: $showDeleteAccountSheet) {
+                DeleteAccountSheet()
+            }
+        } else {
+            NavigationLink(destination: destination) { // Klickbarer Navigations-Link
+                rowContent(showChevron: true)
+            }
+        }
+    }
+
+    private func rowContent(showChevron: Bool) -> some View {
             HStack(spacing: 18) {
                 Image(systemName: icon) // Icon anzeigen
                     .font(.title2)
@@ -150,12 +186,90 @@ struct SettingsRow: View { // Zeile für eine Einstellung
 
                 Spacer() // Abstand rechts
 
-                Image(systemName: "chevron.right") // Pfeil rechts
-                    .foregroundColor(.gray)
+                if showChevron {
+                    Image(systemName: "chevron.right") // Pfeil rechts
+                        .foregroundColor(.gray)
+                }
             }
             .padding() // Innenabstand
             .background(Color.green.opacity(0.18)) // Hintergrundfarbe
             .cornerRadius(16) // Abgerundete Ecken
+    }
+}
+
+// MARK: - DeleteAccountSheet
+struct DeleteAccountSheet: View {
+    @EnvironmentObject private var appData: AppData
+    @Environment(\.dismiss) private var dismiss
+
+    @State private var password = ""
+    @State private var showDeleteError = false
+
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                Color.green.opacity(0.15)
+                    .ignoresSafeArea()
+
+                VStack(alignment: .leading, spacing: 20) {
+                    Text("Konto löschen")
+                        .font(.title2)
+                        .fontWeight(.bold)
+
+                    Text("Gib dein Passwort ein. Danach werden dein Konto, deine Zugangsdaten und alle gespeicherten Daten endgültig gelöscht.")
+                        .font(.subheadline)
+                        .foregroundColor(.gray)
+
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Passwort")
+                            .font(.caption)
+                            .foregroundColor(.gray)
+                            .fontWeight(.semibold)
+
+                        SecureField("Passwort bestätigen", text: $password)
+                            .padding(14)
+                            .background(Color.white.opacity(0.8))
+                            .cornerRadius(12)
+                    }
+
+                    Button {
+                        let didDelete = appData.deleteCurrentAccount(password: password)
+
+                        if didDelete {
+                            dismiss()
+                        } else {
+                            showDeleteError = true
+                        }
+                    } label: {
+                        Text("Konto endgültig löschen")
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(Color.red.opacity(0.85))
+                            .foregroundColor(.white)
+                            .cornerRadius(18)
+                            .fontWeight(.semibold)
+                    }
+                    .disabled(password.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    .opacity(password.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? 0.5 : 1)
+
+                    Spacer()
+                }
+                .padding()
+            }
+            .navigationTitle("Bestätigen")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button("Abbrechen") {
+                        dismiss()
+                    }
+                }
+            }
+            .alert("Löschen nicht möglich", isPresented: $showDeleteError) {
+                Button("OK", role: .cancel) { }
+            } message: {
+                Text("Das Passwort stimmt nicht. Das Konto wurde nicht gelöscht.")
+            }
         }
     }
 }
@@ -199,5 +313,6 @@ struct reminderView: View { // Dummy-ReminderView, falls separat gebraucht
 #Preview { // Vorschau in Xcode
     NavigationStack {
         SettingsView()
+            .environmentObject(AppData())
     }
 }

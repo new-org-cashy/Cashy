@@ -37,7 +37,7 @@ struct SavingsGoalView: View {
                     .tint(AppColors.primaryGreen)
                     .scaleEffect(x: 1, y: 2, anchor: .center)
 
-                Text("Der Balken und das Diagramm werden aus deinem aktuellen Sparstand und den erfassten Ausgaben berechnet.")
+                Text("Der Balken und das Diagramm orientieren sich an deinem eingetragenen Sparstand.")
                     .font(.footnote)
                     .foregroundStyle(.gray)
             }

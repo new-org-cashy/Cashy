@@ -254,6 +254,7 @@ struct SparZielView: View {
                 if let goalValue = Double(normalizedGoal), goalValue > 0 {
                     appData.updateSavingsGoal(goalValue)
                 }
+                appData.completeOnboarding()
                 goToIncome = true
             } label: {
                 Text("Weiter")

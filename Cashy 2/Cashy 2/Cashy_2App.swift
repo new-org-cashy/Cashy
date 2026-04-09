@@ -7,7 +7,19 @@ struct Cashy_2_App: App {
 
     var body: some Scene {
         WindowGroup {
-            LoginView()
+            Group {
+                if appData.isLoggedIn {
+                    NavigationStack {
+                        if appData.hasCompletedOnboarding {
+                            HomeView()
+                        } else {
+                            Fragen()
+                        }
+                    }
+                } else {
+                    LoginView()
+                }
+            }
                 .environmentObject(appData)
         }
     }

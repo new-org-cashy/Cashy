@@ -1,12 +1,20 @@
 import Foundation
 import Combine
 import SwiftUI
+import UIKit
 
-struct Expense: Identifiable {
-    let id = UUID()
+struct Expense: Identifiable, Codable {
+    let id: UUID
     var name: String
     var amount: Double
-    var date: Date = Date()
+    var date: Date
+
+    init(id: UUID = UUID(), name: String, amount: Double, date: Date = Date()) {
+        self.id = id
+        self.name = name
+        self.amount = amount
+        self.date = date
+    }
 }
 
 struct Category: Identifiable {
@@ -20,12 +28,39 @@ struct Category: Identifiable {
     }
 }
 
-struct ExpenseActivity: Identifiable {
+struct SavingsUpdate: Identifiable, Codable {
+    let id: UUID
+    let previousAmount: Double
+    let newAmount: Double
+    let date: Date
+
+    init(
+        id: UUID = UUID(),
+        previousAmount: Double,
+        newAmount: Double,
+        date: Date = Date()
+    ) {
+        self.id = id
+        self.previousAmount = previousAmount
+        self.newAmount = newAmount
+        self.date = date
+    }
+
+    var difference: Double {
+        newAmount - previousAmount
+    }
+}
+
+struct TimelineActivity: Identifiable {
     let id: UUID
     let title: String
-    let comparison: String
+    let detail: String
     let amount: Double
     let date: Date
+
+    var isPositive: Bool {
+        amount >= 0
+    }
 }
 
 private struct ComparisonReference {
@@ -34,38 +69,126 @@ private struct ComparisonReference {
     let unitCost: Double
 }
 
+private struct StoredAccount: Codable {
+    let email: String
+    let password: String
+}
+
+private struct StoredColor: Codable {
+    let red: Double
+    let green: Double
+    let blue: Double
+    let opacity: Double
+
+    init(color: Color) {
+        let uiColor = UIColor(color)
+        var red: CGFloat = 0
+        var green: CGFloat = 0
+        var blue: CGFloat = 0
+        var opacity: CGFloat = 0
+
+        if uiColor.getRed(&red, green: &green, blue: &blue, alpha: &opacity) {
+            self.red = Double(red)
+            self.green = Double(green)
+            self.blue = Double(blue)
+            self.opacity = Double(opacity)
+            return
+        }
+
+        var white: CGFloat = 0
+        if uiColor.getWhite(&white, alpha: &opacity) {
+            self.red = Double(white)
+            self.green = Double(white)
+            self.blue = Double(white)
+            self.opacity = Double(opacity)
+            return
+        }
+
+        self.red = 0.5
+        self.green = 0.5
+        self.blue = 0.5
+        self.opacity = 1
+    }
+
+    var swiftUIColor: Color {
+        Color(.sRGB, red: red, green: green, blue: blue, opacity: opacity)
+    }
+}
+
+private struct StoredCategory: Codable {
+    let name: String
+    let color: StoredColor
+    let expenses: [Expense]
+}
+
+private struct StoredAppState: Codable {
+    let selectedCurrencyName: String
+    let selectedCurrencyCode: String
+    let savingsGoal: Double
+    let savedAmount: Double
+    let badHabitAnswer: String
+    let savingsUpdates: [SavingsUpdate]
+    let categories: [StoredCategory]
+    let hasCompletedOnboarding: Bool
+}
+
 final class AppData: ObservableObject {
-    let objectWillChange = ObservableObjectPublisher()
+    private static let accountsStorageKey = "cashy_accounts"
 
-    var selectedCurrencyName = "Euro" {
-        willSet { objectWillChange.send() }
-    }
-
-    var selectedCurrencyCode = "EUR" {
-        willSet { objectWillChange.send() }
-    }
-
-    var savingsGoal: Double = 500 {
-        willSet { objectWillChange.send() }
-    }
-
-    var baselineSavings: Double = 0 {
-        willSet { objectWillChange.send() }
-    }
-
-    var badHabitAnswer = "" {
-        willSet { objectWillChange.send() }
-    }
-
-    var categories: [Category] = [
+    private static let defaultCategories: [Category] = [
         Category(name: "Skincare", color: Color(red: 0.55, green: 0.70, blue: 0.55)),
         Category(name: "Make-Up", color: Color(red: 0.45, green: 0.65, blue: 0.50)),
         Category(name: "Drogen", color: Color(red: 0.40, green: 0.60, blue: 0.45)),
         Category(name: "Snacks", color: Color(red: 0.35, green: 0.50, blue: 0.30)),
         Category(name: "Abos", color: Color(red: 0.55, green: 0.50, blue: 0.35)),
         Category(name: "Kleidung", color: Color(red: 0.50, green: 0.45, blue: 0.30))
-    ] {
+    ]
+
+    let objectWillChange = ObservableObjectPublisher()
+
+    private var isRestoringState = false
+    private(set) var currentUserEmail: String? {
         willSet { objectWillChange.send() }
+    }
+
+    var selectedCurrencyName = "Euro" {
+        willSet { objectWillChange.send() }
+        didSet { persistCurrentUserState() }
+    }
+
+    var selectedCurrencyCode = "EUR" {
+        willSet { objectWillChange.send() }
+        didSet { persistCurrentUserState() }
+    }
+
+    var savingsGoal: Double = 500 {
+        willSet { objectWillChange.send() }
+        didSet { persistCurrentUserState() }
+    }
+
+    var savedAmount: Double = 0 {
+        willSet { objectWillChange.send() }
+        didSet { persistCurrentUserState() }
+    }
+
+    var badHabitAnswer = "" {
+        willSet { objectWillChange.send() }
+        didSet { persistCurrentUserState() }
+    }
+
+    var savingsUpdates: [SavingsUpdate] = [] {
+        willSet { objectWillChange.send() }
+        didSet { persistCurrentUserState() }
+    }
+
+    var hasCompletedOnboarding = false {
+        willSet { objectWillChange.send() }
+        didSet { persistCurrentUserState() }
+    }
+
+    var categories: [Category] = AppData.defaultCategories {
+        willSet { objectWillChange.send() }
+        didSet { persistCurrentUserState() }
     }
 
     private let comparisons = [
@@ -83,7 +206,7 @@ final class AppData: ObservableObject {
     }
 
     var currentSavings: Double {
-        max(baselineSavings - totalExpenses, 0)
+        savedAmount
     }
 
     var remainingToGoal: Double {
@@ -95,19 +218,36 @@ final class AppData: ObservableObject {
         return min(currentSavings / savingsGoal, 1)
     }
 
-    var expenseActivities: [ExpenseActivity] {
-        categories.flatMap { category in
+    var isLoggedIn: Bool {
+        currentUserEmail != nil
+    }
+
+    var timelineActivities: [TimelineActivity] {
+        let expenseActivities = categories.flatMap { category in
             category.expenses.map { expense in
-                ExpenseActivity(
+                TimelineActivity(
                     id: expense.id,
                     title: "\(expense.name) · \(category.name)",
-                    comparison: comparisonText(for: expense.amount),
-                    amount: expense.amount,
+                    detail: comparisonText(for: expense.amount),
+                    amount: -expense.amount,
                     date: expense.date
                 )
             }
         }
-        .sorted { $0.date > $1.date }
+
+        let savingsActivities = savingsUpdates.map { update in
+            let detail = "Gesamt gespart: \(formatCurrency(update.newAmount))"
+            return TimelineActivity(
+                id: update.id,
+                title: "Zusätzlich gespart",
+                detail: detail,
+                amount: update.difference,
+                date: update.date
+            )
+        }
+
+        return (expenseActivities + savingsActivities)
+            .sorted { $0.date > $1.date }
     }
 
     func updateCurrency(name: String, code: String) {
@@ -115,9 +255,80 @@ final class AppData: ObservableObject {
         selectedCurrencyCode = code
     }
 
+    func registerAccount(email: String, password: String) -> Bool {
+        let normalizedEmail = normalizeEmail(email)
+        let trimmedPassword = password.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        guard !normalizedEmail.isEmpty, !trimmedPassword.isEmpty else { return false }
+
+        var accounts = loadAccounts()
+        guard !accounts.contains(where: { $0.email == normalizedEmail }) else { return false }
+
+        accounts.append(StoredAccount(email: normalizedEmail, password: trimmedPassword))
+        saveAccounts(accounts)
+        saveAppState(defaultStoredAppState(), for: normalizedEmail)
+        return true
+    }
+
+    func login(email: String, password: String) -> Bool {
+        let normalizedEmail = normalizeEmail(email)
+        let trimmedPassword = password.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        guard let account = loadAccounts().first(where: { $0.email == normalizedEmail }),
+              account.password == trimmedPassword else {
+            return false
+        }
+
+        currentUserEmail = normalizedEmail
+        restoreAppState(for: normalizedEmail)
+        return true
+    }
+
+    func logout() {
+        currentUserEmail = nil
+        resetToDefaultState()
+    }
+
+    func deleteCurrentAccount(password: String) -> Bool {
+        guard let currentUserEmail = currentUserEmail else { return false }
+
+        let trimmedPassword = password.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedPassword.isEmpty else { return false }
+
+        var accounts = loadAccounts()
+        guard let accountIndex = accounts.firstIndex(where: {
+            $0.email == currentUserEmail && $0.password == trimmedPassword
+        }) else {
+            return false
+        }
+
+        accounts.remove(at: accountIndex)
+        saveAccounts(accounts)
+        UserDefaults.standard.removeObject(forKey: storageKey(for: currentUserEmail))
+
+        self.currentUserEmail = nil
+        resetToDefaultState()
+        return true
+    }
+
     func updateSavingsGoal(_ newGoal: Double) {
         guard newGoal > 0 else { return }
         savingsGoal = newGoal
+    }
+
+    func addSavedAmount(_ addedAmount: Double) {
+        guard addedAmount > 0 else { return }
+        let previousAmount = savedAmount
+        let newAmount = previousAmount + addedAmount
+        savedAmount = newAmount
+        savingsUpdates.insert(
+            SavingsUpdate(previousAmount: previousAmount, newAmount: newAmount),
+            at: 0
+        )
+    }
+
+    func completeOnboarding() {
+        hasCompletedOnboarding = true
     }
 
     func saveBadHabit(_ text: String) {
@@ -204,9 +415,8 @@ final class AppData: ObservableObject {
                 return nil
             }
 
-            let spentUntilPeriodEnd = totalExpenses(until: nextMonthStart)
-            let savedAmount = max(baselineSavings - spentUntilPeriodEnd, 0)
-            return SavingEntry(month: monthFormatter.string(from: monthStart).capitalized, amount: savedAmount)
+            let periodSavedAmount = savedAmountValue(until: nextMonthStart)
+            return SavingEntry(month: monthFormatter.string(from: monthStart).capitalized, amount: periodSavedAmount)
         }
     }
 
@@ -222,10 +432,9 @@ final class AppData: ObservableObject {
                 return nil
             }
 
-            let spentUntilPeriodEnd = totalExpenses(until: nextWeekStart)
-            let savedAmount = max(baselineSavings - spentUntilPeriodEnd, 0)
+            let periodSavedAmount = savedAmountValue(until: nextWeekStart)
             let weekNumber = calendar.component(.weekOfYear, from: weekStart)
-            return SavingEntry(month: "KW \(weekNumber)", amount: savedAmount)
+            return SavingEntry(month: "KW \(weekNumber)", amount: periodSavedAmount)
         }
     }
 
@@ -248,12 +457,12 @@ final class AppData: ObservableObject {
         return "Das sind etwa \(quantity) \(label)."
     }
 
-    private func totalExpenses(until date: Date) -> Double {
-        categories
-            .flatMap { $0.expenses }
+    private func savedAmountValue(until date: Date) -> Double {
+        savingsUpdates
             .filter { $0.date < date }
-            .map { $0.amount }
-            .reduce(0, +)
+            .sorted { $0.date < $1.date }
+            .last?
+            .newAmount ?? 0
     }
 
     private func ensureCategory(named name: String) {
@@ -266,5 +475,124 @@ final class AppData: ObservableObject {
 
         guard !alreadyExists else { return }
         addCategory(named: normalizedName)
+    }
+
+    private func persistCurrentUserState() {
+        guard !isRestoringState, let currentUserEmail = currentUserEmail else { return }
+        saveAppState(makeStoredAppState(), for: currentUserEmail)
+    }
+
+    private func resetToDefaultState() {
+        isRestoringState = true
+        defer { isRestoringState = false }
+
+        let defaultState = defaultStoredAppState()
+        selectedCurrencyName = defaultState.selectedCurrencyName
+        selectedCurrencyCode = defaultState.selectedCurrencyCode
+        savingsGoal = defaultState.savingsGoal
+        savedAmount = defaultState.savedAmount
+        badHabitAnswer = defaultState.badHabitAnswer
+        savingsUpdates = defaultState.savingsUpdates
+        categories = defaultState.categories.map { storedCategory in
+            Category(
+                name: storedCategory.name,
+                color: storedCategory.color.swiftUIColor,
+                expenses: storedCategory.expenses
+            )
+        }
+        hasCompletedOnboarding = defaultState.hasCompletedOnboarding
+    }
+
+    private func restoreAppState(for email: String) {
+        isRestoringState = true
+        defer { isRestoringState = false }
+
+        let storedState = loadAppState(for: email) ?? defaultStoredAppState()
+        selectedCurrencyName = storedState.selectedCurrencyName
+        selectedCurrencyCode = storedState.selectedCurrencyCode
+        savingsGoal = storedState.savingsGoal
+        savedAmount = storedState.savedAmount
+        badHabitAnswer = storedState.badHabitAnswer
+        savingsUpdates = storedState.savingsUpdates
+        categories = storedState.categories.map { storedCategory in
+            Category(
+                name: storedCategory.name,
+                color: storedCategory.color.swiftUIColor,
+                expenses: storedCategory.expenses
+            )
+        }
+        hasCompletedOnboarding = storedState.hasCompletedOnboarding
+    }
+
+    private func makeStoredAppState() -> StoredAppState {
+        StoredAppState(
+            selectedCurrencyName: selectedCurrencyName,
+            selectedCurrencyCode: selectedCurrencyCode,
+            savingsGoal: savingsGoal,
+            savedAmount: savedAmount,
+            badHabitAnswer: badHabitAnswer,
+            savingsUpdates: savingsUpdates,
+            categories: categories.map {
+                StoredCategory(
+                    name: $0.name,
+                    color: StoredColor(color: $0.color),
+                    expenses: $0.expenses
+                )
+            },
+            hasCompletedOnboarding: hasCompletedOnboarding
+        )
+    }
+
+    private func defaultStoredAppState() -> StoredAppState {
+        StoredAppState(
+            selectedCurrencyName: "Euro",
+            selectedCurrencyCode: "EUR",
+            savingsGoal: 500,
+            savedAmount: 0,
+            badHabitAnswer: "",
+            savingsUpdates: [],
+            categories: AppData.defaultCategories.map {
+                StoredCategory(
+                    name: $0.name,
+                    color: StoredColor(color: $0.color),
+                    expenses: $0.expenses
+                )
+            },
+            hasCompletedOnboarding: false
+        )
+    }
+
+    private func loadAccounts() -> [StoredAccount] {
+        guard let data = UserDefaults.standard.data(forKey: AppData.accountsStorageKey),
+              let accounts = try? JSONDecoder().decode([StoredAccount].self, from: data) else {
+            return []
+        }
+        return accounts
+    }
+
+    private func saveAccounts(_ accounts: [StoredAccount]) {
+        guard let data = try? JSONEncoder().encode(accounts) else { return }
+        UserDefaults.standard.set(data, forKey: AppData.accountsStorageKey)
+    }
+
+    private func loadAppState(for email: String) -> StoredAppState? {
+        guard let data = UserDefaults.standard.data(forKey: storageKey(for: email)),
+              let state = try? JSONDecoder().decode(StoredAppState.self, from: data) else {
+            return nil
+        }
+        return state
+    }
+
+    private func saveAppState(_ state: StoredAppState, for email: String) {
+        guard let data = try? JSONEncoder().encode(state) else { return }
+        UserDefaults.standard.set(data, forKey: storageKey(for: email))
+    }
+
+    private func storageKey(for email: String) -> String {
+        "cashy_state_\(email)"
+    }
+
+    private func normalizeEmail(_ email: String) -> String {
+        email.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
     }
 }

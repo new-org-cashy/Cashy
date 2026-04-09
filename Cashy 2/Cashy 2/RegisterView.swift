@@ -3,7 +3,7 @@ private let brownColor = Color(red: 0.6, green: 0.4, blue: 0.2)
 struct RegisterView: View {
     
     @Binding var isPresented: Bool
-    @Environment(\.dismiss) var dismiss
+    @EnvironmentObject private var appData: AppData
     
     @State private var email = ""
     @State private var password = ""
@@ -12,6 +12,8 @@ struct RegisterView: View {
     @State private var showConfirmPassword = false
     @State private var showForgotPassword = false
     @State private var showLogin = false
+    @State private var showRegisterError = false
+    @State private var registerErrorMessage = ""
     
     var passwordsMatch: Bool {
         !password.isEmpty && password == confirmPassword
@@ -137,7 +139,17 @@ struct RegisterView: View {
                         Spacer(minLength: 20)
                         
                         // MARK: Konto erstellen Button
-                        NavigationLink(destination: LoginView()) {
+                        Button {
+                            let didRegister = appData.registerAccount(email: email, password: password)
+
+                            guard didRegister else {
+                                registerErrorMessage = "Für diese E-Mail gibt es bereits ein Konto oder die Eingabe ist unvollständig."
+                                showRegisterError = true
+                                return
+                            }
+
+                            isPresented = false
+                        } label: {
                             Text("Konto erstellen")
                                 .frame(maxWidth: .infinity)
                                 .padding()
@@ -157,6 +169,11 @@ struct RegisterView: View {
             }
         }
         .navigationBarBackButtonHidden(true)
+        .alert("Registrierung fehlgeschlagen", isPresented: $showRegisterError) {
+            Button("OK", role: .cancel) { }
+        } message: {
+            Text(registerErrorMessage)
+        }
     }
 
 }
@@ -164,5 +181,6 @@ struct RegisterView: View {
 #Preview {
     NavigationStack {
         RegisterView(isPresented: .constant(true))
+            .environmentObject(AppData())
     }
 }
