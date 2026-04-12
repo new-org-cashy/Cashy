@@ -1,10 +1,14 @@
 import SwiftUI
 
 struct LoginView: View {
+    @EnvironmentObject private var appData: AppData
+
     @State private var email = ""
     @State private var password = ""
     @State private var showForgotPassword = false
     @State private var showRegister = false
+    @State private var showLoginError = false
+    @State private var loginErrorMessage = ""
     
     
     // Braun Farbe für Buttons
@@ -74,22 +78,26 @@ struct LoginView: View {
                     }
                     .padding(.horizontal)
                     
-                    NavigationLink(destination:Fragen()){
-                        // MARK: Anmelden Button
-                        Button(action: {}) {
-                            Text("Anmelden")
-                                .frame(maxWidth: .infinity)
-                                .padding()
-                                .background(brownColor)
-                                .foregroundColor(.white)
-                                .cornerRadius(20)
-                                .fontWeight(.semibold)
+                    Button {
+                        let didLogin = appData.login(email: email, password: password)
+
+                        guard didLogin else {
+                            loginErrorMessage = "Die Kombination aus E-Mail und Passwort wurde nicht gefunden."
+                            showLoginError = true
+                            return
                         }
-                        
-                        .padding(.horizontal)
-                        .disabled(email.isEmpty || password.isEmpty)
-                        .opacity(email.isEmpty || password.isEmpty ? 0.5 : 1.0)
+                    } label: {
+                        Text("Anmelden")
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(brownColor)
+                            .foregroundColor(.white)
+                            .cornerRadius(20)
+                            .fontWeight(.semibold)
                     }
+                    .padding(.horizontal)
+                    .disabled(email.isEmpty || password.isEmpty)
+                    .opacity(email.isEmpty || password.isEmpty ? 0.5 : 1.0)
                     Spacer()
                     
                     // MARK: Registrieren Link
@@ -116,6 +124,11 @@ struct LoginView: View {
             }
             .navigationDestination(isPresented: $showRegister) {
                 RegisterView(isPresented: $showRegister)
+            }
+            .alert("Anmeldung fehlgeschlagen", isPresented: $showLoginError) {
+                Button("OK", role: .cancel) { }
+            } message: {
+                Text(loginErrorMessage)
             }
         }
     }
@@ -321,4 +334,5 @@ struct ForgotPasswordSheet: View {
 
 #Preview {
     LoginView()
+        .environmentObject(AppData())
 }
