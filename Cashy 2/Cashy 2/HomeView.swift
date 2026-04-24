@@ -94,8 +94,8 @@ struct HomeView: View {
                         .frame(width: 1, height: 20)
                         .foregroundColor(Color.gray.opacity(0.4))
 
-                    NavigationLink(destination: VirtuelleWeltView()) {
-                        Text("Virtuelle Welt")
+                    NavigationLink(destination: ContentView()) {
+                        Text("Ausgaben")
                             .foregroundColor(.black)
                             .padding(.vertical, 6)
                             .padding(.horizontal, 14)
@@ -230,8 +230,8 @@ struct HomeView: View {
                     )
                     .frame(maxWidth: .infinity, alignment: .leading)
 
-                    NavigationLink(destination: ContentView()) {
-                        Image(systemName: "creditcard")
+                    NavigationLink(destination: SavingsGoalView()) {
+                        Image(systemName: "chart.bar")
                             .foregroundColor(.black)
                             .scaleEffect(pressedCart ? 0.9 : 1.0)
                             .animation(.easeInOut(duration: 0.1), value: pressedCart)
