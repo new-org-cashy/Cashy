@@ -14,6 +14,7 @@ struct WeekDay: Identifiable { // Struktur für einen Wochentag
 
 // MARK: - ReminderView
 struct ReminderView: View { // Haupt-View für Erinnerungen
+    @EnvironmentObject private var tutorial: AppTutorialController
 
     // MARK: - States (Veränderbare Werte)
     @State private var selectedOption: ReminderOption? = nil // Welche Option ist ausgewählt
@@ -92,6 +93,7 @@ struct ReminderView: View { // Haupt-View für Erinnerungen
                         }
                     }
                 }
+                .tutorialTarget(.reminderOptions)
 
                 Spacer() // Abstand nach unten
 
@@ -136,6 +138,11 @@ struct ReminderView: View { // Haupt-View für Erinnerungen
                 loadFromUserDefaults() // Einstellungen laden
             }
         }
+        .onAppear {
+            tutorial.completeNavigation(from: .homeReminderButton, to: .reminderOptions)
+            tutorial.completeNavigation(from: .settingsStatsDetails, to: .reminderOptions)
+        }
+        .tutorialSpotlightHost()
     }
 
     // MARK: - Option Row
@@ -221,5 +228,6 @@ struct ReminderView: View { // Haupt-View für Erinnerungen
 #Preview {
     NavigationStack {
         ReminderView() // Zeigt Vorschau der ReminderView
+            .environmentObject(AppTutorialController())
     }
 }

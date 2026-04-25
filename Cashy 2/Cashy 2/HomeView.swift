@@ -63,6 +63,7 @@ struct LavaLampBackground: View {
 
 struct HomeView: View {
     @EnvironmentObject private var appData: AppData
+    @EnvironmentObject private var tutorial: AppTutorialController
 
     @State private var pressedVirtuelle = false
     @State private var pressedAusgaben = false
@@ -104,6 +105,7 @@ struct HomeView: View {
                             .scaleEffect(pressedVirtuelle ? 0.95 : 1.0)
                             .animation(.easeInOut(duration: 0.1), value: pressedVirtuelle)
                     }
+                    .tutorialTarget(.homeExpensesButton)
                     .simultaneousGesture(
                         DragGesture(minimumDistance: 0)
                             .onChanged { _ in pressedVirtuelle = true }
@@ -128,6 +130,7 @@ struct HomeView: View {
                             .foregroundColor(.black)
                     }
                     .buttonStyle(.plain)
+                    .tutorialTarget(.homeSavings)
 
                     ProgressView(value: appData.savingsProgress)
                         .tint(.green)
@@ -153,6 +156,7 @@ struct HomeView: View {
                             }
                         }
                         .buttonStyle(.plain)
+                        .tutorialTarget(.homeGoal)
 
                         Spacer()
 
@@ -200,6 +204,7 @@ struct HomeView: View {
                 .background(Color.green.opacity(0.18))
                 .cornerRadius(22)
                 .padding(.horizontal)
+                .tutorialTarget(.homeHistory)
 
                 Spacer()
             }
@@ -211,18 +216,28 @@ struct HomeView: View {
         .sheet(isPresented: $showSavedAmountSheet) {
             SavedAmountSheet(savedAmountDraft: $savedAmountDraft)
         }
+        .navigationDestination(isPresented: $tutorial.navigateToExpenses) {
+            ContentView()
+        }
+        .navigationDestination(isPresented: $tutorial.navigateToStats) {
+            SavingsGoalView()
+        }
+        .navigationDestination(isPresented: $tutorial.navigateToReminders) {
+            ReminderView()
+        }
         .safeAreaInset(edge: .bottom) {
             VStack(spacing: 5) {
                 Divider()
                     .background(Color.gray.opacity(0.3))
 
                 HStack {
-                    NavigationLink(destination: AccountView()) {
-                        Image(systemName: "person")
+                    NavigationLink(destination: ReminderView()) {
+                        Image(systemName: "bell")
                             .foregroundColor(.black)
                             .scaleEffect(pressedPerson ? 0.9 : 1.0)
                             .animation(.easeInOut(duration: 0.1), value: pressedPerson)
                     }
+                    .tutorialTarget(.homeReminderButton)
                     .simultaneousGesture(
                         DragGesture(minimumDistance: 0)
                             .onChanged { _ in pressedPerson = true }
@@ -236,6 +251,7 @@ struct HomeView: View {
                             .scaleEffect(pressedCart ? 0.9 : 1.0)
                             .animation(.easeInOut(duration: 0.1), value: pressedCart)
                     }
+                    .tutorialTarget(.homeStatsButton)
                     .simultaneousGesture(
                         DragGesture(minimumDistance: 0)
                             .onChanged { _ in pressedCart = true }
@@ -262,6 +278,11 @@ struct HomeView: View {
             }
             .background(Color.gray.opacity(0.2))
         }
+        .onAppear {
+            tutorial.completeHomeReturnIfNeeded()
+            tutorial.startIfNeeded(appData: appData)
+        }
+        .tutorialSpotlightHost()
     }
 
     private func formattedGoalInput(_ value: Double) -> String {
@@ -379,5 +400,6 @@ struct SavedAmountSheet: View {
     NavigationStack {
         HomeView()
             .environmentObject(AppData())
+            .environmentObject(AppTutorialController())
     }
 }

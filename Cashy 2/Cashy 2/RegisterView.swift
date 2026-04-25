@@ -35,15 +35,24 @@ struct RegisterView: View {
             VStack(spacing: 20) {
                 // MARK: Header
                 HStack {
+                    Button(action: { isPresented = false }) {
+                        Image(systemName: "xmark")
+                            .font(.title2)
+                            .foregroundColor(.black)
+                    }
+
                     Spacer()
+
                     Text("Konto erstellen")
                         .font(.title)
                         .fontWeight(.bold)
-                        .padding(.top, 60)
+
                     Spacer()
+
+                    Color.clear.frame(width: 20, height: 20)
                 }
-                .padding()
-                .padding()
+                .padding(.horizontal)
+                .padding(.top, 60)
                 
                 Spacer(minLength: 40)
                 
