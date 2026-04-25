@@ -1,9 +1,11 @@
 import SwiftUI // Importiert das SwiftUI Framework für UI-Elemente
 
+// Die Einstellungen bündeln statische Menüpunkte, Suche und Aktionen wie Logout, Konto-Löschen und Tutorial-Neustart.
 // MARK: - SettingsView
 struct SettingsView: View { // Haupt-View für die Einstellungen
 
     @EnvironmentObject private var appData: AppData
+    @EnvironmentObject private var tutorial: AppTutorialController
     @Environment(\.dismiss) var dismiss // Ermöglicht das Schließen der View
     @State private var searchText: String = "" // Text im Suchfeld
     @State private var showSearch: Bool = false // Zeigt an, ob das Suchfeld sichtbar ist
@@ -13,7 +15,6 @@ struct SettingsView: View { // Haupt-View für die Einstellungen
         ("person", "Konto"),
         ("lock", "Datenschutz"),
         ("bell", "Erinnerungen"),
-        ("chart.bar", "Verlauf & Statistiken"),
         ("globe", "Sprache"),
         ("questionmark.circle", "Hilfe-Center"),
         ("star", "Feedback geben"),
@@ -98,6 +99,8 @@ struct SettingsView: View { // Haupt-View für die Einstellungen
 
                 // MARK: Scrollbarer Inhalt
                 ScrollView { // Scrollbare Liste
+                    // Die Liste wird über die Suche gefiltert,
+                    // damit dieselbe View sowohl als Übersicht als auch als schnelle Navigation dient.
                     VStack(spacing: 12) {
                         ForEach(filteredSettings, id: \.1) { item in // Für jede gefilterte Einstellung
                             SettingsRow(icon: item.0, title: item.1) // Zeigt die Zeile
@@ -114,13 +117,25 @@ struct SettingsView: View { // Haupt-View für die Einstellungen
             }
         }
         .navigationBarBackButtonHidden(true) // Standard-Back-Button ausblenden
+        // Auch aus den Einstellungen kann das Tutorial programmgesteuert in Statistik und Erinnerungen springen.
+        .navigationDestination(isPresented: $tutorial.navigateToStats) {
+            SavingsGoalView()
+        }
+        .navigationDestination(isPresented: $tutorial.navigateToReminders) {
+            ReminderView()
+        }
+        .tutorialSpotlightHost()
     }
 }
 
 // MARK: - SettingsRow
+// Eine einzelne Einstellungszeile entscheidet abhängig vom Titel,
+// ob Navigation, Sheet oder direkte Aktion ausgelöst wird.
 struct SettingsRow: View { // Zeile für eine Einstellung
 
     @EnvironmentObject private var appData: AppData
+    @EnvironmentObject private var tutorial: AppTutorialController
+    @Environment(\.dismiss) private var dismiss
 
     let icon: String // Icon-Name
     let title: String // Titel der Einstellung
@@ -129,14 +144,13 @@ struct SettingsRow: View { // Zeile für eine Einstellung
 
     @ViewBuilder
     var destination: some View {
+        // Einige Menüpunkte haben echte Unterseiten,
+        // andere landen aktuell bewusst in einer generischen Detail-Ansicht.
         if title == "Konto" {
             AccountView()
             
         } else if title == "Erinnerungen" {
             ReminderView()
-            
-        } else if title == "Verlauf & Statistiken" {
-            SavingsGoalView()
             
         } else {
             SettingsDetailView(title: title)
@@ -166,6 +180,15 @@ struct SettingsRow: View { // Zeile für eine Einstellung
             .sheet(isPresented: $showDeleteAccountSheet) {
                 DeleteAccountSheet()
             }
+        } else if title == "Hilfe-Center" {
+            Button {
+                // Das Hilfe-Center nutzt denselben Tutorial-Controller wie das Erst-Tutorial,
+                // startet ihn aber manuell erneut aus den Einstellungen.
+                tutorial.restart()
+                dismiss()
+            } label: {
+                rowContent(showChevron: true)
+            }
         } else {
             NavigationLink(destination: destination) { // Klickbarer Navigations-Link
                 rowContent(showChevron: true)
@@ -173,31 +196,35 @@ struct SettingsRow: View { // Zeile für eine Einstellung
         }
     }
 
+    @ViewBuilder
     private func rowContent(showChevron: Bool) -> some View {
-            HStack(spacing: 18) {
-                Image(systemName: icon) // Icon anzeigen
-                    .font(.title2)
-                    .frame(width: 30)
-                    .foregroundColor(.black)
+        let content = HStack(spacing: 18) {
+            Image(systemName: icon) // Icon anzeigen
+                .font(.title2)
+                .frame(width: 30)
+                .foregroundColor(.black)
 
-                Text(title) // Titel anzeigen
-                    .font(.title3)
-                    .foregroundColor(.black)
+            Text(title) // Titel anzeigen
+                .font(.title3)
+                .foregroundColor(.black)
 
-                Spacer() // Abstand rechts
+            Spacer() // Abstand rechts
 
-                if showChevron {
-                    Image(systemName: "chevron.right") // Pfeil rechts
-                        .foregroundColor(.gray)
-                }
+            if showChevron {
+                Image(systemName: "chevron.right") // Pfeil rechts
+                    .foregroundColor(.gray)
             }
-            .padding() // Innenabstand
-            .background(Color.green.opacity(0.18)) // Hintergrundfarbe
-            .cornerRadius(16) // Abgerundete Ecken
+        }
+        .padding() // Innenabstand
+        .background(Color.green.opacity(0.18)) // Hintergrundfarbe
+        .cornerRadius(16) // Abgerundete Ecken
+
+        content
     }
 }
 
 // MARK: - DeleteAccountSheet
+// Dieser Flow fragt das Passwort erneut ab, bevor lokale Account- und Nutzerdaten gelöscht werden.
 struct DeleteAccountSheet: View {
     @EnvironmentObject private var appData: AppData
     @Environment(\.dismiss) private var dismiss
@@ -275,6 +302,8 @@ struct DeleteAccountSheet: View {
 }
 
 // MARK: - SettingsDetailView
+// Platzhalter für Menüpunkte, die bereits in der Navigation existieren,
+// aber noch keinen eigenen Feature-Screen bekommen haben.
 struct SettingsDetailView: View { // Detail-View für einzelne Einstellungen
 
     let title: String // Titel der Detailseite
@@ -294,6 +323,7 @@ struct SettingsDetailView: View { // Detail-View für einzelne Einstellungen
 }
 
 // MARK: - ReminderView (Dummy)
+// Historischer Platzhalter, falls die Erinnerungsseite einmal separat ersetzt werden sollte.
 struct reminderView: View { // Dummy-ReminderView, falls separat gebraucht
     var body: some View {
         ZStack {
@@ -314,5 +344,6 @@ struct reminderView: View { // Dummy-ReminderView, falls separat gebraucht
     NavigationStack {
         SettingsView()
             .environmentObject(AppData())
+            .environmentObject(AppTutorialController())
     }
 }

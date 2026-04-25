@@ -1,5 +1,6 @@
 import SwiftUI // Importiert das SwiftUI Framework für UI-Elemente
 
+// Die Erinnerungsansicht verwaltet Auswahl, Vorschau und lokale Speicherung der Spar-Erinnerungen.
 // MARK: - Optionen für Erinnerungen
 enum ReminderOption: String, Codable { // Definiert die verschiedenen Erinnerungsoptionen
     case daily, weekly, monthly, everyXDays, specificDays // Täglich, Wöchentlich, Monatlich, Alle X Tage, Bestimmte Tage
@@ -14,6 +15,7 @@ struct WeekDay: Identifiable { // Struktur für einen Wochentag
 
 // MARK: - ReminderView
 struct ReminderView: View { // Haupt-View für Erinnerungen
+    @EnvironmentObject private var tutorial: AppTutorialController
 
     // MARK: - States (Veränderbare Werte)
     @State private var selectedOption: ReminderOption? = nil // Welche Option ist ausgewählt
@@ -92,6 +94,7 @@ struct ReminderView: View { // Haupt-View für Erinnerungen
                         }
                     }
                 }
+                .tutorialTarget(.reminderOptions)
 
                 Spacer() // Abstand nach unten
 
@@ -99,6 +102,8 @@ struct ReminderView: View { // Haupt-View für Erinnerungen
                     .foregroundColor(.gray)
 
                 if selectedOption != nil { // Wenn eine Option gewählt wurde
+                    // Speichern friert die aktuelle Auswahl ein,
+                    // Löschen setzt die Konfiguration wieder in den Ausgangszustand zurück.
                     HStack(spacing: 16) { // Buttons horizontal
 
                         // Löschen-Button
@@ -136,6 +141,13 @@ struct ReminderView: View { // Haupt-View für Erinnerungen
                 loadFromUserDefaults() // Einstellungen laden
             }
         }
+        .onAppear {
+            // Die Erinnerungsseite kann im Tutorial von Home oder von der Statistik aus erreicht werden.
+            // Beide möglichen Einstiegspunkte werden deshalb hier auf denselben letzten Schritt zusammengeführt.
+            tutorial.completeNavigation(from: .homeReminderButton, to: .reminderOptions)
+            tutorial.completeNavigation(from: .settingsStatsDetails, to: .reminderOptions)
+        }
+        .tutorialSpotlightHost()
     }
 
     // MARK: - Option Row
@@ -158,6 +170,8 @@ struct ReminderView: View { // Haupt-View für Erinnerungen
 
     // MARK: - Nächste Erinnerung berechnen
     var nextReminderText: String { // Text für nächste Erinnerung
+        // Aus der ausgewählten Regel wird eine einfache menschenlesbare Vorschau erzeugt,
+        // damit der Nutzer direkt versteht, wann Cashy wieder erinnern würde.
         let calendar = Calendar.current
         let today = calendar.component(.weekday, from: selectionDate) // Wochentag heute
 
@@ -197,6 +211,7 @@ struct ReminderView: View { // Haupt-View für Erinnerungen
 
     // MARK: - Persistenz
     func saveToUserDefaults() { // Speichert Einstellungen lokal
+        // Die Erinnerung wird lokal persistiert, damit die Auswahl beim nächsten Öffnen erhalten bleibt.
         let defaults = UserDefaults.standard
         defaults.set(selectedOption?.rawValue, forKey: "ReminderOption")
         defaults.set(xDays, forKey: "ReminderXDays")
@@ -206,6 +221,7 @@ struct ReminderView: View { // Haupt-View für Erinnerungen
     }
 
     func loadFromUserDefaults() { // Lädt gespeicherte Einstellungen
+        // Beim Öffnen wird der letzte bekannte Stand wieder in die UI zurückgespielt.
         let defaults = UserDefaults.standard
         if let raw = defaults.string(forKey: "ReminderOption") {
             selectedOption = ReminderOption(rawValue: raw)
@@ -221,5 +237,6 @@ struct ReminderView: View { // Haupt-View für Erinnerungen
 #Preview {
     NavigationStack {
         ReminderView() // Zeigt Vorschau der ReminderView
+            .environmentObject(AppTutorialController())
     }
 }

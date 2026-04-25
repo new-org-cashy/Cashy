@@ -1,5 +1,6 @@
 import SwiftUI
 
+// Home bündelt den aktuellen Sparstand, das Ziel, den Verlauf und die Hauptnavigation der App.
 struct ZielView: View { var body: some View { Text("Hier geht es zu den Ausgaben").font(.title).foregroundColor(.green) } }
 struct PersonView: View { var body: some View { Text("Person View").font(.title) } }
 struct CartView: View { var body: some View { Text("Warenkorb View").font(.title) } }
@@ -13,6 +14,7 @@ struct ActivityRow: View {
     let amountColor: Color
 
     var body: some View {
+        // Jede Aktivität zeigt Titel, Zusatzinfo und Betrag in einer kompakten Timeline-Zeile.
         HStack(alignment: .top, spacing: 12) {
             VStack(alignment: .leading, spacing: 4) {
                 Text(title)
@@ -42,6 +44,7 @@ struct LavaLampBackground: View {
     @State private var end = UnitPoint.bottom
 
     var body: some View {
+        // Der animierte Verlauf gibt Home mehr Bewegung, ohne den eigentlichen Content zu überlagern.
         LinearGradient(
             gradient: Gradient(colors: [
                 Color.green.opacity(0.3),
@@ -63,6 +66,7 @@ struct LavaLampBackground: View {
 
 struct HomeView: View {
     @EnvironmentObject private var appData: AppData
+    @EnvironmentObject private var tutorial: AppTutorialController
 
     @State private var pressedVirtuelle = false
     @State private var pressedAusgaben = false
@@ -79,6 +83,7 @@ struct HomeView: View {
             LavaLampBackground()
 
             VStack(spacing: 20) {
+                // Im oberen Bereich liegen Titel und direkter Einstieg in die Ausgabenansicht.
                 HStack(spacing: 12) {
                     Spacer()
 
@@ -94,8 +99,8 @@ struct HomeView: View {
                         .frame(width: 1, height: 20)
                         .foregroundColor(Color.gray.opacity(0.4))
 
-                    NavigationLink(destination: VirtuelleWeltView()) {
-                        Text("Virtuelle Welt")
+                    NavigationLink(destination: ContentView()) {
+                        Text("Ausgaben")
                             .foregroundColor(.black)
                             .padding(.vertical, 6)
                             .padding(.horizontal, 14)
@@ -104,6 +109,7 @@ struct HomeView: View {
                             .scaleEffect(pressedVirtuelle ? 0.95 : 1.0)
                             .animation(.easeInOut(duration: 0.1), value: pressedVirtuelle)
                     }
+                    .tutorialTarget(.homeExpensesButton)
                     .simultaneousGesture(
                         DragGesture(minimumDistance: 0)
                             .onChanged { _ in pressedVirtuelle = true }
@@ -114,6 +120,8 @@ struct HomeView: View {
                 }
 
                 VStack(alignment: .leading, spacing: 25) {
+                    // Diese Karte zeigt Sparstand und Ziel auf einen Blick
+                    // und öffnet über Tap die zugehörigen Eingabesheets.
                     Text("Bereits gespart:")
                         .font(.subheadline)
                         .foregroundColor(.gray)
@@ -128,6 +136,7 @@ struct HomeView: View {
                             .foregroundColor(.black)
                     }
                     .buttonStyle(.plain)
+                    .tutorialTarget(.homeSavings)
 
                     ProgressView(value: appData.savingsProgress)
                         .tint(.green)
@@ -153,6 +162,7 @@ struct HomeView: View {
                             }
                         }
                         .buttonStyle(.plain)
+                        .tutorialTarget(.homeGoal)
 
                         Spacer()
 
@@ -166,6 +176,8 @@ struct HomeView: View {
                 .padding(.horizontal)
 
                 ScrollView {
+                    // Der Verlauf kombiniert Sparupdates und Ausgaben chronologisch,
+                    // damit der Nutzer seine letzten Änderungen schnell nachvollziehen kann.
                     VStack(alignment: .leading, spacing: 12) {
                         Text("Verlauf")
                             .font(.headline)
@@ -200,6 +212,7 @@ struct HomeView: View {
                 .background(Color.green.opacity(0.18))
                 .cornerRadius(22)
                 .padding(.horizontal)
+                .tutorialTarget(.homeHistory)
 
                 Spacer()
             }
@@ -211,18 +224,29 @@ struct HomeView: View {
         .sheet(isPresented: $showSavedAmountSheet) {
             SavedAmountSheet(savedAmountDraft: $savedAmountDraft)
         }
+        // Diese Ziele werden nicht nur manuell geöffnet, sondern auch vom Tutorial angesteuert.
+        .navigationDestination(isPresented: $tutorial.navigateToExpenses) {
+            ContentView()
+        }
+        .navigationDestination(isPresented: $tutorial.navigateToStats) {
+            SavingsGoalView()
+        }
+        .navigationDestination(isPresented: $tutorial.navigateToReminders) {
+            ReminderView()
+        }
         .safeAreaInset(edge: .bottom) {
             VStack(spacing: 5) {
                 Divider()
                     .background(Color.gray.opacity(0.3))
 
                 HStack {
-                    NavigationLink(destination: AccountView()) {
-                        Image(systemName: "person")
+                    NavigationLink(destination: ReminderView()) {
+                        Image(systemName: "bell")
                             .foregroundColor(.black)
                             .scaleEffect(pressedPerson ? 0.9 : 1.0)
                             .animation(.easeInOut(duration: 0.1), value: pressedPerson)
                     }
+                    .tutorialTarget(.homeReminderButton)
                     .simultaneousGesture(
                         DragGesture(minimumDistance: 0)
                             .onChanged { _ in pressedPerson = true }
@@ -230,12 +254,13 @@ struct HomeView: View {
                     )
                     .frame(maxWidth: .infinity, alignment: .leading)
 
-                    NavigationLink(destination: ContentView()) {
-                        Image(systemName: "creditcard")
+                    NavigationLink(destination: SavingsGoalView()) {
+                        Image(systemName: "chart.bar")
                             .foregroundColor(.black)
                             .scaleEffect(pressedCart ? 0.9 : 1.0)
                             .animation(.easeInOut(duration: 0.1), value: pressedCart)
                     }
+                    .tutorialTarget(.homeStatsButton)
                     .simultaneousGesture(
                         DragGesture(minimumDistance: 0)
                             .onChanged { _ in pressedCart = true }
@@ -262,6 +287,13 @@ struct HomeView: View {
             }
             .background(Color.gray.opacity(0.2))
         }
+        .onAppear {
+            // Wenn das Tutorial von einer Unterseite nach Home zurückkehrt,
+            // wird hier zuerst der wartende Home-Schritt reaktiviert und danach ggf. das Erst-Tutorial gestartet.
+            tutorial.completeHomeReturnIfNeeded()
+            tutorial.startIfNeeded(appData: appData)
+        }
+        .tutorialSpotlightHost()
     }
 
     private func formattedGoalInput(_ value: Double) -> String {
@@ -287,6 +319,7 @@ struct GoalEditSheet: View {
 
     var body: some View {
         NavigationStack {
+            // Dieses Sheet ändert nur das Sparziel und gibt die Daten direkt an AppData weiter.
             VStack(alignment: .leading, spacing: 20) {
                 Text("Neues Sparziel")
                     .font(.title2)
@@ -333,6 +366,8 @@ struct SavedAmountSheet: View {
 
     var body: some View {
         NavigationStack {
+            // Hier trägt der Nutzer zusätzliche Sparbeträge ein,
+            // die anschließend auf den bisherigen Stand addiert werden.
             VStack(alignment: .leading, spacing: 20) {
                 Text("Zusätzlich gesparten Betrag eintragen")
                     .font(.title2)
@@ -379,5 +414,6 @@ struct SavedAmountSheet: View {
     NavigationStack {
         HomeView()
             .environmentObject(AppData())
+            .environmentObject(AppTutorialController())
     }
 }

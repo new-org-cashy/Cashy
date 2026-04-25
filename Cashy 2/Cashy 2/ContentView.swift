@@ -1,7 +1,9 @@
 import SwiftUI
 
+// Die Ausgabenansicht verwaltet Kategorien, Einzelposten und den Sprung in die Diagramm-Ansicht.
 struct ContentView: View {
     @EnvironmentObject private var appData: AppData
+    @EnvironmentObject private var tutorial: AppTutorialController
     @Environment(\.dismiss) private var dismiss
 
     @State private var selectedCategoryID: Category.ID?
@@ -18,6 +20,7 @@ struct ContentView: View {
                 .ignoresSafeArea()
 
             VStack {
+                // Über den Button oben kann direkt zwischen Listen- und Diagrammansicht gewechselt werden.
                 HStack {
                     NavigationLink(destination: ViewPage()) {
                         HStack(spacing: 10) {
@@ -32,12 +35,14 @@ struct ContentView: View {
                         .foregroundColor(.white)
                         .cornerRadius(24)
                     }
+                    .tutorialTarget(.expenseViewButton)
                     .buttonStyle(.plain)
                 }
                 .padding(.horizontal)
                 .padding(.top, 8)
 
                 ScrollView {
+                    // Jede Kategorie bekommt eine Karte mit Summe, Schnellaktionen und den letzten Einträgen.
                     VStack(spacing: 14) {
                         ForEach(appData.categories.indices, id: \.self) { index in
                             let category = appData.categories[index]
@@ -73,6 +78,7 @@ struct ContentView: View {
                             .padding(.horizontal)
                         }
                     }
+                    .tutorialTarget(.expenseCategories)
                 }
 
                 Spacer()
@@ -118,9 +124,22 @@ struct ContentView: View {
         } message: {
             Text("Der neue Name wird auf \(renameDraft.isEmpty ? "die Kategorie" : renameDraft) geändert.")
         }
+        .navigationDestination(isPresented: $tutorial.navigateToExpenseChart) {
+            ViewPage()
+        }
+        .onAppear {
+            // Wenn die Ausgabenansicht durch das Tutorial geöffnet wurde,
+            // wird hier der nächste lokale Schritt freigegeben.
+            tutorial.completeNavigation(from: .homeExpensesButton, to: .expenseCategories)
+            if tutorial.shouldReturnToHome {
+                dismiss()
+            }
+        }
+        .tutorialSpotlightHost()
     }
 }
 
+// Die Karten bündeln Kategoriename, Summe, Schnellzugriff auf neue Ausgaben und Umbenennen per Long Press.
 private struct CategoryCard: View {
     let category: Category
     let currencyFormatter: (Double) -> String
@@ -210,6 +229,7 @@ struct AddExpenseView: View {
             Color(red: 0.85, green: 0.93, blue: 0.82)
                 .ignoresSafeArea()
 
+            // Beim Speichern wird nur validierter Text plus Betrag an AppData übergeben.
             VStack(spacing: 20) {
                 Text("Neue Ausgabe")
                     .font(.largeTitle)
@@ -262,6 +282,7 @@ struct ExpenseListView: View {
             Color(red: 0.85, green: 0.93, blue: 0.82)
                 .ignoresSafeArea()
 
+            // Diese Detailansicht zeigt alle Ausgaben einer Kategorie inklusive Vergleichstexten.
             VStack {
                 Text(category?.name ?? "Kategorie")
                     .font(.largeTitle)
@@ -321,6 +342,7 @@ struct NewCategoryView: View {
             Color(red: 0.85, green: 0.93, blue: 0.82)
                 .ignoresSafeArea()
 
+            // Neue Kategorien werden mit Name erfasst und danach im zentralen Datenmodell angelegt.
             VStack(spacing: 20) {
                 Text("Neue Kategorie")
                     .font(.largeTitle)
@@ -345,6 +367,8 @@ struct NewCategoryView: View {
 
 struct ViewPage: View {
     @EnvironmentObject private var appData: AppData
+    @EnvironmentObject private var tutorial: AppTutorialController
+    @Environment(\.dismiss) private var dismiss
 
     var total: Double {
         appData.categories.map { $0.amount }.reduce(0, +)
@@ -355,6 +379,7 @@ struct ViewPage: View {
             Color(red: 0.85, green: 0.93, blue: 0.82)
                 .ignoresSafeArea()
 
+            // Die Diagrammseite fasst die Kategorien als Ringdiagramm und als kurze Liste zusammen.
             VStack {
                 Text("Ansicht")
                     .font(.largeTitle)
@@ -363,6 +388,7 @@ struct ViewPage: View {
 
                 DonutChart(categories: appData.categories)
                     .frame(width: 220, height: 220)
+                    .tutorialTarget(.expenseChart)
 
                 ScrollView {
                     VStack(spacing: 14) {
@@ -409,9 +435,25 @@ struct ViewPage: View {
                 Spacer()
             }
         }
+        .onChange(of: tutorial.currentStep) { _, newStep in
+            if newStep == .homeStatsButton {
+                dismiss()
+            }
+        }
+        .onChange(of: tutorial.shouldReturnToHome) { _, shouldReturnToHome in
+            if shouldReturnToHome {
+                dismiss()
+            }
+        }
+        .onAppear {
+            // Dieser Callback bestätigt dem Tutorial, dass die Diagrammseite erreicht wurde.
+            tutorial.completeNavigation(from: .expenseViewButton, to: .expenseChart)
+        }
+        .tutorialSpotlightHost()
     }
 }
 
+// Das Donut-Chart berechnet Start- und Endsegmente dynamisch aus den aktuellen Kategoriesummen.
 struct DonutChart: View {
     @EnvironmentObject private var appData: AppData
 
@@ -462,5 +504,6 @@ struct DonutChart: View {
     NavigationStack {
         ContentView()
             .environmentObject(AppData())
+            .environmentObject(AppTutorialController())
     }
 }

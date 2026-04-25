@@ -1,5 +1,7 @@
 import SwiftUI
 
+// Dieser Screen kapselt einen einfachen Splash-Ablauf:
+// erst wird das Branding animiert eingeblendet, danach wird in die Hauptansicht gewechselt.
 struct SplashScreen: View {
     @State private var isActive = false
     @State private var scale: CGFloat = 0.8
@@ -7,10 +9,10 @@ struct SplashScreen: View {
 
     var body: some View {
         if isActive {
-            // Hier deine Haupt-App
+            // Nach der kurzen Intro-Animation wird direkt der eigentliche App-Content angezeigt.
             ContentView()
         } else {
-            // Splash Screen
+            // Solange der Splash aktiv ist, wird nur Logo plus Einstiegshintergrund dargestellt.
             VStack {
                 Image("deinLogo") // dein Logo-Bild
                     .resizable()
@@ -22,6 +24,8 @@ struct SplashScreen: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(Color.white) // Hintergrundfarbe
             .onAppear {
+                // Die Animation vergrößert das Logo leicht und blendet es ein,
+                // bevor der Splash automatisch in den Content übergeht.
                 withAnimation(.easeIn(duration: 1.0)) {
                     self.scale = 1.2
                     self.opacity = 1.0
@@ -36,5 +40,4 @@ struct SplashScreen: View {
         }
     }
 }
-
 

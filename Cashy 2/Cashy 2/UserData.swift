@@ -3,6 +3,8 @@ import Combine
 import SwiftUI
 import UIKit
 
+// Die Grundmodelle beschreiben Ausgaben, Kategorien und Sparfortschritt,
+// die später in den Views angezeigt und lokal persistiert werden.
 struct Expense: Identifiable, Codable {
     let id: UUID
     var name: String
@@ -130,8 +132,58 @@ private struct StoredAppState: Codable {
     let savingsUpdates: [SavingsUpdate]
     let categories: [StoredCategory]
     let hasCompletedOnboarding: Bool
+    let hasSeenAppTutorial: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case selectedCurrencyName
+        case selectedCurrencyCode
+        case savingsGoal
+        case savedAmount
+        case badHabitAnswer
+        case savingsUpdates
+        case categories
+        case hasCompletedOnboarding
+        case hasSeenAppTutorial
+    }
+
+    init(
+        selectedCurrencyName: String,
+        selectedCurrencyCode: String,
+        savingsGoal: Double,
+        savedAmount: Double,
+        badHabitAnswer: String,
+        savingsUpdates: [SavingsUpdate],
+        categories: [StoredCategory],
+        hasCompletedOnboarding: Bool,
+        hasSeenAppTutorial: Bool
+    ) {
+        self.selectedCurrencyName = selectedCurrencyName
+        self.selectedCurrencyCode = selectedCurrencyCode
+        self.savingsGoal = savingsGoal
+        self.savedAmount = savedAmount
+        self.badHabitAnswer = badHabitAnswer
+        self.savingsUpdates = savingsUpdates
+        self.categories = categories
+        self.hasCompletedOnboarding = hasCompletedOnboarding
+        self.hasSeenAppTutorial = hasSeenAppTutorial
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        selectedCurrencyName = try container.decode(String.self, forKey: .selectedCurrencyName)
+        selectedCurrencyCode = try container.decode(String.self, forKey: .selectedCurrencyCode)
+        savingsGoal = try container.decode(Double.self, forKey: .savingsGoal)
+        savedAmount = try container.decode(Double.self, forKey: .savedAmount)
+        badHabitAnswer = try container.decode(String.self, forKey: .badHabitAnswer)
+        savingsUpdates = try container.decode([SavingsUpdate].self, forKey: .savingsUpdates)
+        categories = try container.decode([StoredCategory].self, forKey: .categories)
+        hasCompletedOnboarding = try container.decode(Bool.self, forKey: .hasCompletedOnboarding)
+        hasSeenAppTutorial = try container.decodeIfPresent(Bool.self, forKey: .hasSeenAppTutorial) ?? false
+    }
 }
 
+// AppData ist die zentrale Datenquelle der App:
+// Account-Verwaltung, Onboarding-Zustand, Kategorien, Sparstände und Persistenz laufen hier zusammen.
 final class AppData: ObservableObject {
     private static let accountsStorageKey = "cashy_accounts"
 
@@ -186,6 +238,11 @@ final class AppData: ObservableObject {
         didSet { persistCurrentUserState() }
     }
 
+    var hasSeenAppTutorial = false {
+        willSet { objectWillChange.send() }
+        didSet { persistCurrentUserState() }
+    }
+
     var categories: [Category] = AppData.defaultCategories {
         willSet { objectWillChange.send() }
         didSet { persistCurrentUserState() }
@@ -205,6 +262,7 @@ final class AppData: ObservableObject {
         categories.map { $0.amount }.reduce(0, +)
     }
 
+    // Diese berechneten Werte verdichten Sparziel, Fortschritt und Verlauf für Home und Statistik.
     var currentSavings: Double {
         savedAmount
     }
@@ -223,6 +281,8 @@ final class AppData: ObservableObject {
     }
 
     var timelineActivities: [TimelineActivity] {
+        // Ausgaben und Sparupdates werden in eine gemeinsame Timeline überführt,
+        // damit Home nur noch eine sortierte Aktivitätsliste rendern muss.
         let expenseActivities = categories.flatMap { category in
             category.expenses.map { expense in
                 TimelineActivity(
@@ -255,6 +315,8 @@ final class AppData: ObservableObject {
         selectedCurrencyCode = code
     }
 
+    // Registrierung und Login arbeiten mit einfachen lokal gespeicherten Accounts,
+    // damit jede E-Mail ihren eigenen separaten App-Zustand bekommt.
     func registerAccount(email: String, password: String) -> Bool {
         let normalizedEmail = normalizeEmail(email)
         let trimmedPassword = password.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -316,6 +378,8 @@ final class AppData: ObservableObject {
         savingsGoal = newGoal
     }
 
+    // Neue Sparbeträge werden als Verlaufseintrag gespeichert,
+    // damit Statistik und Timeline nicht nur den Endstand kennen.
     func addSavedAmount(_ addedAmount: Double) {
         guard addedAmount > 0 else { return }
         let previousAmount = savedAmount
@@ -331,7 +395,22 @@ final class AppData: ObservableObject {
         hasCompletedOnboarding = true
     }
 
+    func markAppTutorialSeen() {
+        hasSeenAppTutorial = true
+    }
+
+    func clearHistoryAndStats() {
+        // Diese Funktion leert finanzielle Verlaufsdaten, belässt aber die vorhandenen Kategorien.
+        savedAmount = 0
+        savingsUpdates = []
+        categories = categories.map { category in
+            Category(name: category.name, color: category.color, expenses: [])
+        }
+    }
+
     func saveBadHabit(_ text: String) {
+        // Die Onboarding-Antwort wird gespeichert und kann gleichzeitig automatisch
+        // eine passende Kategorie erzeugen, falls sie noch nicht existiert.
         let trimmedText = text.trimmingCharacters(in: .whitespacesAndNewlines)
         badHabitAnswer = trimmedText
 
@@ -355,6 +434,8 @@ final class AppData: ObservableObject {
     }
 
     func addCategory(named name: String) {
+        // Neue Kategorien erhalten rotierend Farben aus einer kleinen Palette,
+        // damit die Karten und Diagramme visuell unterscheidbar bleiben.
         let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmedName.isEmpty else { return }
 
@@ -382,6 +463,7 @@ final class AppData: ObservableObject {
     }
 
     func formatCurrency(_ value: Double) -> String {
+        // Die Währungsausgabe richtet sich nach der im Onboarding oder Konto gewählten Währung.
         let formatter = NumberFormatter()
         formatter.numberStyle = .currency
         formatter.currencyCode = selectedCurrencyCode
@@ -400,6 +482,7 @@ final class AppData: ObservableObject {
     }
 
     func monthlySavingsEntries() -> [SavingEntry] {
+        // Für die Statistik werden historische Sparstände bis zum Ende jedes Monats aggregiert.
         let calendar = Calendar.current
         let monthFormatter = DateFormatter()
         monthFormatter.locale = Locale(identifier: "de_DE")
@@ -421,6 +504,7 @@ final class AppData: ObservableObject {
     }
 
     func weeklySavingsEntries() -> [SavingEntry] {
+        // Dieselbe Logik wird auch auf Wochenbasis angeboten, damit der Nutzer zwischen beiden Sichten wechseln kann.
         let calendar = Calendar.current
         guard let currentWeekStart = calendar.dateInterval(of: .weekOfYear, for: Date())?.start else {
             return [SavingEntry(month: "Diese Woche", amount: currentSavings)]
@@ -439,6 +523,8 @@ final class AppData: ObservableObject {
     }
 
     func comparisonText(for amount: Double) -> String {
+        // Ausgaben werden in bekannte Alltagsvergleiche übersetzt,
+        // um Beträge emotional greifbarer zu machen.
         guard amount > 0 else { return "" }
 
         let ranked = comparisons
@@ -478,11 +564,14 @@ final class AppData: ObservableObject {
     }
 
     private func persistCurrentUserState() {
+        // Jede relevante Änderung wird sofort dem aktuell eingeloggten Nutzer zugeordnet gespeichert.
         guard !isRestoringState, let currentUserEmail = currentUserEmail else { return }
         saveAppState(makeStoredAppState(), for: currentUserEmail)
     }
 
     private func resetToDefaultState() {
+        // Beim Logout wird ein frischer Standardzustand geladen,
+        // ohne dabei versehentlich wieder etwas in den gerade verlassenen Account zu schreiben.
         isRestoringState = true
         defer { isRestoringState = false }
 
@@ -501,9 +590,11 @@ final class AppData: ObservableObject {
             )
         }
         hasCompletedOnboarding = defaultState.hasCompletedOnboarding
+        hasSeenAppTutorial = defaultState.hasSeenAppTutorial
     }
 
     private func restoreAppState(for email: String) {
+        // Beim Login wird der gesamte gespeicherte Nutzerzustand zurück in SwiftUI-Strukturen übersetzt.
         isRestoringState = true
         defer { isRestoringState = false }
 
@@ -522,6 +613,7 @@ final class AppData: ObservableObject {
             )
         }
         hasCompletedOnboarding = storedState.hasCompletedOnboarding
+        hasSeenAppTutorial = storedState.hasSeenAppTutorial
     }
 
     private func makeStoredAppState() -> StoredAppState {
@@ -539,7 +631,8 @@ final class AppData: ObservableObject {
                     expenses: $0.expenses
                 )
             },
-            hasCompletedOnboarding: hasCompletedOnboarding
+            hasCompletedOnboarding: hasCompletedOnboarding,
+            hasSeenAppTutorial: hasSeenAppTutorial
         )
     }
 
@@ -558,7 +651,8 @@ final class AppData: ObservableObject {
                     expenses: $0.expenses
                 )
             },
-            hasCompletedOnboarding: false
+            hasCompletedOnboarding: false,
+            hasSeenAppTutorial: false
         )
     }
 
@@ -593,6 +687,7 @@ final class AppData: ObservableObject {
     }
 
     private func normalizeEmail(_ email: String) -> String {
+        // Mails werden normalisiert, damit Login und Registrierung dieselbe Schreibweise vergleichen.
         email.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
     }
 }
