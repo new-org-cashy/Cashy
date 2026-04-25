@@ -1,5 +1,6 @@
 import SwiftUI
 
+// Zentrale Farbwerte, damit Statistik- und Standard-Views dieselben Akzentfarben verwenden.
 struct AppColors {
     static let primaryGreen = Color(red: 52/255, green: 199/255, blue: 89/255)
     static let neutralGray = Color(red: 142/255, green: 142/255, blue: 147/255)

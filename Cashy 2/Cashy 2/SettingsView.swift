@@ -1,5 +1,6 @@
 import SwiftUI // Importiert das SwiftUI Framework für UI-Elemente
 
+// Die Einstellungen bündeln statische Menüpunkte, Suche und Aktionen wie Logout, Konto-Löschen und Tutorial-Neustart.
 // MARK: - SettingsView
 struct SettingsView: View { // Haupt-View für die Einstellungen
 
@@ -98,6 +99,8 @@ struct SettingsView: View { // Haupt-View für die Einstellungen
 
                 // MARK: Scrollbarer Inhalt
                 ScrollView { // Scrollbare Liste
+                    // Die Liste wird über die Suche gefiltert,
+                    // damit dieselbe View sowohl als Übersicht als auch als schnelle Navigation dient.
                     VStack(spacing: 12) {
                         ForEach(filteredSettings, id: \.1) { item in // Für jede gefilterte Einstellung
                             SettingsRow(icon: item.0, title: item.1) // Zeigt die Zeile
@@ -114,6 +117,7 @@ struct SettingsView: View { // Haupt-View für die Einstellungen
             }
         }
         .navigationBarBackButtonHidden(true) // Standard-Back-Button ausblenden
+        // Auch aus den Einstellungen kann das Tutorial programmgesteuert in Statistik und Erinnerungen springen.
         .navigationDestination(isPresented: $tutorial.navigateToStats) {
             SavingsGoalView()
         }
@@ -125,6 +129,8 @@ struct SettingsView: View { // Haupt-View für die Einstellungen
 }
 
 // MARK: - SettingsRow
+// Eine einzelne Einstellungszeile entscheidet abhängig vom Titel,
+// ob Navigation, Sheet oder direkte Aktion ausgelöst wird.
 struct SettingsRow: View { // Zeile für eine Einstellung
 
     @EnvironmentObject private var appData: AppData
@@ -138,6 +144,8 @@ struct SettingsRow: View { // Zeile für eine Einstellung
 
     @ViewBuilder
     var destination: some View {
+        // Einige Menüpunkte haben echte Unterseiten,
+        // andere landen aktuell bewusst in einer generischen Detail-Ansicht.
         if title == "Konto" {
             AccountView()
             
@@ -174,6 +182,8 @@ struct SettingsRow: View { // Zeile für eine Einstellung
             }
         } else if title == "Hilfe-Center" {
             Button {
+                // Das Hilfe-Center nutzt denselben Tutorial-Controller wie das Erst-Tutorial,
+                // startet ihn aber manuell erneut aus den Einstellungen.
                 tutorial.restart()
                 dismiss()
             } label: {
@@ -214,6 +224,7 @@ struct SettingsRow: View { // Zeile für eine Einstellung
 }
 
 // MARK: - DeleteAccountSheet
+// Dieser Flow fragt das Passwort erneut ab, bevor lokale Account- und Nutzerdaten gelöscht werden.
 struct DeleteAccountSheet: View {
     @EnvironmentObject private var appData: AppData
     @Environment(\.dismiss) private var dismiss
@@ -291,6 +302,8 @@ struct DeleteAccountSheet: View {
 }
 
 // MARK: - SettingsDetailView
+// Platzhalter für Menüpunkte, die bereits in der Navigation existieren,
+// aber noch keinen eigenen Feature-Screen bekommen haben.
 struct SettingsDetailView: View { // Detail-View für einzelne Einstellungen
 
     let title: String // Titel der Detailseite
@@ -310,6 +323,7 @@ struct SettingsDetailView: View { // Detail-View für einzelne Einstellungen
 }
 
 // MARK: - ReminderView (Dummy)
+// Historischer Platzhalter, falls die Erinnerungsseite einmal separat ersetzt werden sollte.
 struct reminderView: View { // Dummy-ReminderView, falls separat gebraucht
     var body: some View {
         ZStack {

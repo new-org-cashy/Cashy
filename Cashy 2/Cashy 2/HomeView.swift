@@ -1,5 +1,6 @@
 import SwiftUI
 
+// Home bündelt den aktuellen Sparstand, das Ziel, den Verlauf und die Hauptnavigation der App.
 struct ZielView: View { var body: some View { Text("Hier geht es zu den Ausgaben").font(.title).foregroundColor(.green) } }
 struct PersonView: View { var body: some View { Text("Person View").font(.title) } }
 struct CartView: View { var body: some View { Text("Warenkorb View").font(.title) } }
@@ -13,6 +14,7 @@ struct ActivityRow: View {
     let amountColor: Color
 
     var body: some View {
+        // Jede Aktivität zeigt Titel, Zusatzinfo und Betrag in einer kompakten Timeline-Zeile.
         HStack(alignment: .top, spacing: 12) {
             VStack(alignment: .leading, spacing: 4) {
                 Text(title)
@@ -42,6 +44,7 @@ struct LavaLampBackground: View {
     @State private var end = UnitPoint.bottom
 
     var body: some View {
+        // Der animierte Verlauf gibt Home mehr Bewegung, ohne den eigentlichen Content zu überlagern.
         LinearGradient(
             gradient: Gradient(colors: [
                 Color.green.opacity(0.3),
@@ -80,6 +83,7 @@ struct HomeView: View {
             LavaLampBackground()
 
             VStack(spacing: 20) {
+                // Im oberen Bereich liegen Titel und direkter Einstieg in die Ausgabenansicht.
                 HStack(spacing: 12) {
                     Spacer()
 
@@ -116,6 +120,8 @@ struct HomeView: View {
                 }
 
                 VStack(alignment: .leading, spacing: 25) {
+                    // Diese Karte zeigt Sparstand und Ziel auf einen Blick
+                    // und öffnet über Tap die zugehörigen Eingabesheets.
                     Text("Bereits gespart:")
                         .font(.subheadline)
                         .foregroundColor(.gray)
@@ -170,6 +176,8 @@ struct HomeView: View {
                 .padding(.horizontal)
 
                 ScrollView {
+                    // Der Verlauf kombiniert Sparupdates und Ausgaben chronologisch,
+                    // damit der Nutzer seine letzten Änderungen schnell nachvollziehen kann.
                     VStack(alignment: .leading, spacing: 12) {
                         Text("Verlauf")
                             .font(.headline)
@@ -216,6 +224,7 @@ struct HomeView: View {
         .sheet(isPresented: $showSavedAmountSheet) {
             SavedAmountSheet(savedAmountDraft: $savedAmountDraft)
         }
+        // Diese Ziele werden nicht nur manuell geöffnet, sondern auch vom Tutorial angesteuert.
         .navigationDestination(isPresented: $tutorial.navigateToExpenses) {
             ContentView()
         }
@@ -279,6 +288,8 @@ struct HomeView: View {
             .background(Color.gray.opacity(0.2))
         }
         .onAppear {
+            // Wenn das Tutorial von einer Unterseite nach Home zurückkehrt,
+            // wird hier zuerst der wartende Home-Schritt reaktiviert und danach ggf. das Erst-Tutorial gestartet.
             tutorial.completeHomeReturnIfNeeded()
             tutorial.startIfNeeded(appData: appData)
         }
@@ -308,6 +319,7 @@ struct GoalEditSheet: View {
 
     var body: some View {
         NavigationStack {
+            // Dieses Sheet ändert nur das Sparziel und gibt die Daten direkt an AppData weiter.
             VStack(alignment: .leading, spacing: 20) {
                 Text("Neues Sparziel")
                     .font(.title2)
@@ -354,6 +366,8 @@ struct SavedAmountSheet: View {
 
     var body: some View {
         NavigationStack {
+            // Hier trägt der Nutzer zusätzliche Sparbeträge ein,
+            // die anschließend auf den bisherigen Stand addiert werden.
             VStack(alignment: .leading, spacing: 20) {
                 Text("Zusätzlich gesparten Betrag eintragen")
                     .font(.title2)

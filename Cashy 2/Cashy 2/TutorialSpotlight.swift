@@ -1,5 +1,7 @@
 import SwiftUI
 
+// Über Preferences sammeln die Views ihre markierten Tutorial-Ziele,
+// damit das Overlay später genau auf die passende Komponente zeigen kann.
 private struct TutorialTargetPreferenceKey: PreferenceKey {
     static var defaultValue: [TutorialHighlightTarget: Anchor<CGRect>] = [:]
 
@@ -12,17 +14,21 @@ private struct TutorialTargetPreferenceKey: PreferenceKey {
 }
 
 extension View {
+    // Dieser Modifier markiert ein UI-Element als Spotlight-Ziel für einen Tutorial-Schritt.
     func tutorialTarget(_ target: TutorialHighlightTarget) -> some View {
         anchorPreference(key: TutorialTargetPreferenceKey.self, value: .bounds) {
             [target: $0]
         }
     }
 
+    // Dieser Host hängt das eigentliche Spotlight-Overlay über die aktuelle View-Hierarchie.
     func tutorialSpotlightHost() -> some View {
         modifier(TutorialSpotlightHostModifier())
     }
 }
 
+// Der Host liest die registrierten Anker aus und zeigt nur dann ein Overlay,
+// wenn das Tutorial aktiv ist und für den aktuellen Schritt ein Ziel vorhanden ist.
 private struct TutorialSpotlightHostModifier: ViewModifier {
     @EnvironmentObject private var appData: AppData
     @EnvironmentObject private var tutorial: AppTutorialController
@@ -53,6 +59,7 @@ private struct TutorialSpotlightHostModifier: ViewModifier {
     }
 }
 
+// Das Overlay dunkelt den Rest des Screens ab und blendet unten die erklärende Karte ein.
 private struct TutorialSpotlightOverlay: View {
     let rect: CGRect
     let step: AppTutorialStep
@@ -67,9 +74,12 @@ private struct TutorialSpotlightOverlay: View {
     var body: some View {
         GeometryReader { proxy in
             ZStack(alignment: .bottom) {
+                // Eine nahezu transparente Fläche fängt Touches außerhalb des Spotlights ab,
+                // damit der Nutzer durch das Tutorial geführt wird.
                 Color.black.opacity(0.001)
                     .ignoresSafeArea()
 
+                // Durch die ausgeschnittene Form bleibt das aktuelle Ziel visuell hervorgehoben.
                 Path { path in
                     path.addRect(CGRect(origin: .zero, size: proxy.size))
                     path.addRoundedRect(
@@ -86,6 +96,7 @@ private struct TutorialSpotlightOverlay: View {
                     .position(x: spotlightRect.midX, y: spotlightRect.midY)
                     .shadow(color: .white.opacity(0.18), radius: 18)
 
+                // Die Karte enthält Fortschritt, Erklärung und die Aktion für den nächsten Schritt.
                 VStack(alignment: .leading, spacing: 16) {
                     HStack {
                         Text("Tutorial \(progressText)")

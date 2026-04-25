@@ -1,5 +1,6 @@
 import SwiftUI
 
+// Die Farb-Extension liefert den gemeinsamen Look für den Onboarding-Bereich.
 extension Color {
     static let backgroundGreen = Color(red: 147/255, green: 193/255, blue: 151/255)
     static let lightGreen = Color(red: 215/255, green: 223/255, blue: 201/255)
@@ -11,6 +12,7 @@ struct Currency: Identifiable {
     let code: String
 }
 
+// Der Onboarding-Flow führt erst durch Währung, dann schlechte Angewohnheiten und zuletzt das Sparziel.
 struct Fragen: View {
     @EnvironmentObject private var appData: AppData
 
@@ -113,6 +115,7 @@ struct Fragen: View {
 
     var body: some View {
         VStack(spacing: 16) {
+            // Auf der ersten Seite wird die Währung gewählt, die später für alle Beträge genutzt wird.
             Text("Wähle deine Währung")
                 .font(.title2)
                 .fontWeight(.bold)
@@ -185,6 +188,8 @@ struct BadHabitView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 25) {
+            // Diese Seite sammelt die typische Ausgabenkategorie des Nutzers
+            // und legt daraus bei Bedarf direkt eine neue Kategorie an.
             Text("Was sind deine schlechten\nAngewohnheiten im Umgang\nmit Geld?")
                 .font(.title2)
                 .fontWeight(.bold)
@@ -238,6 +243,7 @@ struct SparZielView: View {
     
     var body: some View {
         VStack(alignment: .leading, spacing: 25) {
+            // Der letzte Onboarding-Schritt setzt das erste Sparziel und schaltet danach die Haupt-App frei.
             Text("Was ist dein Sparziel?")
                 .font(.title2)
                 .fontWeight(.bold)
@@ -253,6 +259,8 @@ struct SparZielView: View {
                 if let goalValue = Double(normalizedGoal), goalValue > 0 {
                     appData.updateSavingsGoal(goalValue)
                 }
+                // Das Onboarding endet hier bewusst nur über den App-Zustand.
+                // Die Root-Ansicht wechselt danach automatisch zu Home, ohne eine zweite HomeView zu pushen.
                 appData.completeOnboarding()
             } label: {
                 Text("Weiter")

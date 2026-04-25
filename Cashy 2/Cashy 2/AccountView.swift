@@ -2,6 +2,8 @@ import SwiftUI // Importiert SwiftUI für UI-Elemente
 import PhotosUI // Importiert PhotosUI, damit man Fotos aus der Galerie auswählen kann
 import UIKit
 
+// Die Kontoansicht verwaltet einfache Profilinformationen lokal in UserDefaults,
+// inklusive optionalem Profilbild aus der Fotogalerie.
 // MARK: - AccountView
 struct AccountView: View { // Haupt-View für das Benutzerkonto
     
@@ -53,6 +55,8 @@ struct AccountView: View { // Haupt-View für das Benutzerkonto
                     
                     // MARK: Benutzerfelder
                     VStack(spacing: 16) {
+                        // Die Profilfelder und das Speichern sind bewusst simpel gehalten,
+                        // weil diese Ansicht aktuell nur lokale Gerätedaten pflegt.
                         customField(title: "Name", text: $name) // Eingabefeld Name
                         customField(title: "E-Mail", text: $email) // Eingabefeld E-Mail
                         
@@ -124,6 +128,8 @@ struct AccountView: View { // Haupt-View für das Benutzerkonto
     
     // MARK: - Speichern der Benutzerdaten
     private func saveUserData() {
+        // Name, Mail, Passwort und Bild werden getrennt gespeichert,
+        // damit die Ansicht beim nächsten Öffnen den letzten Stand wiederherstellen kann.
         UserDefaults.standard.set(name, forKey: nameKey) // Name speichern
         UserDefaults.standard.set(email, forKey: emailKey) // E-Mail speichern
         UserDefaults.standard.set(password, forKey: passwordKey) // Passwort speichern
@@ -136,6 +142,8 @@ struct AccountView: View { // Haupt-View für das Benutzerkonto
     
     // MARK: - Laden der Benutzerdaten
     private func loadUserData() {
+        // Beim Öffnen werden alle bekannten Profilwerte geladen
+        // und optional wieder in ein UIImage für die Vorschau umgewandelt.
         name = UserDefaults.standard.string(forKey: nameKey) ?? "" // Name laden
         email = UserDefaults.standard.string(forKey: emailKey) ?? "" // E-Mail laden
         password = UserDefaults.standard.string(forKey: passwordKey) ?? "" // Passwort laden
@@ -150,6 +158,8 @@ struct AccountView: View { // Haupt-View für das Benutzerkonto
     private func loadImage() {
         guard let selectedItem = selectedItem else { return } // Prüfen, ob Bild ausgewählt
         
+        // Das ausgewählte Foto wird asynchron geladen und danach im State gehalten,
+        // damit die UI sofort aktualisiert und später gespeichert werden kann.
         selectedItem.loadTransferable(type: Data.self) { result in // Daten aus Picker laden
             DispatchQueue.main.async { // UI auf Hauptthread aktualisieren
                 switch result {

@@ -1,6 +1,7 @@
 import Combine
 import SwiftUI
 
+// Diese Ziele markieren konkrete UI-Elemente, auf die das Spotlight im Tutorial zeigt.
 enum TutorialHighlightTarget: Hashable {
     case homeSavings
     case homeGoal
@@ -15,6 +16,7 @@ enum TutorialHighlightTarget: Hashable {
     case reminderOptions
 }
 
+// Jeder Schritt beschreibt Inhalt, Ziel-Element und Verhalten des geführten App-Tutorials.
 enum AppTutorialStep: Int, CaseIterable, Identifiable {
     case homeSavings
     case homeGoal
@@ -166,6 +168,8 @@ final class AppTutorialController: ObservableObject {
     @Published private(set) var currentStep: AppTutorialStep = .homeSavings
     @Published private(set) var isActive = false
 
+    // Diese Flags steuern die programmgesteuerte Navigation zwischen den Views,
+    // damit das Tutorial auch über mehrere Screens hinweg weiterlaufen kann.
     @Published var navigateToExpenses = false
     @Published var navigateToExpenseChart = false
     @Published var navigateToStats = false
@@ -178,6 +182,7 @@ final class AppTutorialController: ObservableObject {
         "\(currentStep.rawValue + 1) / \(AppTutorialStep.allCases.count)"
     }
 
+    // Das automatische Erst-Tutorial startet nur nach Login und abgeschlossenem Onboarding.
     func startIfNeeded(appData: AppData) {
         guard appData.isLoggedIn,
               appData.hasCompletedOnboarding,
@@ -191,6 +196,8 @@ final class AppTutorialController: ObservableObject {
         isActive = true
     }
 
+    // Hier wird entschieden, ob der nächste Schritt lokal in derselben View liegt
+    // oder ob zuerst ein anderer Screen geöffnet werden muss.
     func advance(appData: AppData) {
         guard isActive else { return }
 
@@ -240,6 +247,7 @@ final class AppTutorialController: ObservableObject {
         resetNavigation()
     }
 
+    // Views melden sich hier zurück, sobald die vom Tutorial ausgelöste Navigation angekommen ist.
     func completeNavigation(from sourceStep: AppTutorialStep, to destinationStep: AppTutorialStep) {
         guard isActive, currentStep == sourceStep else { return }
 
@@ -248,6 +256,8 @@ final class AppTutorialController: ObservableObject {
         }
     }
 
+    // Nach Rücksprüngen von Unterseiten nach Home wird hier der wartende Home-Schritt gesetzt,
+    // damit das Tutorial auf dem Hauptscreen nahtlos weiterlaufen kann.
     func completeHomeReturnIfNeeded() {
         guard isActive,
               shouldReturnToHome,
@@ -261,11 +271,13 @@ final class AppTutorialController: ObservableObject {
         self.pendingHomeStep = nil
     }
 
+    // Am Ende wird das Tutorial als gesehen markiert und alle temporären Zustände werden aufgeräumt.
     private func finish(appData: AppData) {
         appData.markAppTutorialSeen()
         reset()
     }
 
+    // Alle Navigationstrigger werden zentral zurückgesetzt, damit kein alter View-Wechsel hängen bleibt.
     private func resetNavigation() {
         navigateToExpenses = false
         navigateToExpenseChart = false

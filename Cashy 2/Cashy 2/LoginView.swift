@@ -1,5 +1,7 @@
 import SwiftUI
 
+// Der Login bildet den Einstieg für bestehende Accounts
+// und delegiert Authentifizierung und Fehlerfälle an das zentrale AppData-Modell.
 struct LoginView: View {
     @EnvironmentObject private var appData: AppData
 
@@ -38,6 +40,8 @@ struct LoginView: View {
                     
                     // MARK: Eingabefelder
                     VStack(spacing: 16) {
+                        // Die Eingabefelder sammeln Mail und Passwort,
+                        // ohne bereits selbst Auth-Logik zu duplizieren.
                         VStack(alignment: .leading, spacing: 8) {
                             Text("E-Mail")
                                 .font(.caption)
@@ -81,6 +85,8 @@ struct LoginView: View {
                     Button {
                         let didLogin = appData.login(email: email, password: password)
 
+                        // Die eigentliche Konto-Prüfung erfolgt in AppData,
+                        // damit Login und Persistenz an einer Stelle zusammenlaufen.
                         guard didLogin else {
                             loginErrorMessage = "Die Kombination aus E-Mail und Passwort wurde nicht gefunden."
                             showLoginError = true
@@ -135,6 +141,8 @@ struct LoginView: View {
 }
 
 // MARK: - Passwort vergessen Sheet
+// Der Passwort-Reset ist aktuell als lokaler mehrstufiger UI-Flow modelliert
+// und zeigt, wie spätere Backend-Schritte eingebettet werden könnten.
 struct ForgotPasswordSheet: View {
     @Binding var isPresented: Bool
     @State private var forgotEmail = ""
@@ -175,6 +183,7 @@ struct ForgotPasswordSheet: View {
             .padding()
             
             if !showCodeInput {
+                // Schritt 1: Mail erfassen, um den Codeversand einzuleiten.
                 VStack(spacing: 20) {
                     Text("Gib deine E-Mail-Adresse ein, um einen Bestätigungscode zu erhalten.")
                         .font(.subheadline)
@@ -214,6 +223,7 @@ struct ForgotPasswordSheet: View {
                     Spacer()
                 }
             } else if !showPasswordReset {
+                // Schritt 2: Bestätigungscode eingeben, bevor das neue Passwort freigeschaltet wird.
                 VStack(spacing: 20) {
                     Text("Bestätigungscode wurde an \(forgotEmail) gesendet.")
                         .font(.subheadline)
@@ -253,6 +263,7 @@ struct ForgotPasswordSheet: View {
                 }
             }
             else {
+                // Schritt 3: Neues Passwort setzen und lokal validieren.
                 VStack(spacing: 20) {
                     Text("Neues Passwort festlegen")
                         .font(.headline)
