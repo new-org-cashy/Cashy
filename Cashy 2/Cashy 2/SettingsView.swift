@@ -4,6 +4,7 @@ import SwiftUI // Importiert das SwiftUI Framework für UI-Elemente
 struct SettingsView: View { // Haupt-View für die Einstellungen
 
     @EnvironmentObject private var appData: AppData
+    @EnvironmentObject private var tutorial: AppTutorialController
     @Environment(\.dismiss) var dismiss // Ermöglicht das Schließen der View
     @State private var searchText: String = "" // Text im Suchfeld
     @State private var showSearch: Bool = false // Zeigt an, ob das Suchfeld sichtbar ist
@@ -13,7 +14,6 @@ struct SettingsView: View { // Haupt-View für die Einstellungen
         ("person", "Konto"),
         ("lock", "Datenschutz"),
         ("bell", "Erinnerungen"),
-        ("chart.bar", "Verlauf & Statistiken"),
         ("globe", "Sprache"),
         ("questionmark.circle", "Hilfe-Center"),
         ("star", "Feedback geben"),
@@ -114,6 +114,13 @@ struct SettingsView: View { // Haupt-View für die Einstellungen
             }
         }
         .navigationBarBackButtonHidden(true) // Standard-Back-Button ausblenden
+        .navigationDestination(isPresented: $tutorial.navigateToStats) {
+            SavingsGoalView()
+        }
+        .navigationDestination(isPresented: $tutorial.navigateToReminders) {
+            ReminderView()
+        }
+        .tutorialSpotlightHost()
     }
 }
 
@@ -121,6 +128,8 @@ struct SettingsView: View { // Haupt-View für die Einstellungen
 struct SettingsRow: View { // Zeile für eine Einstellung
 
     @EnvironmentObject private var appData: AppData
+    @EnvironmentObject private var tutorial: AppTutorialController
+    @Environment(\.dismiss) private var dismiss
 
     let icon: String // Icon-Name
     let title: String // Titel der Einstellung
@@ -134,9 +143,6 @@ struct SettingsRow: View { // Zeile für eine Einstellung
             
         } else if title == "Erinnerungen" {
             ReminderView()
-            
-        } else if title == "Verlauf & Statistiken" {
-            SavingsGoalView()
             
         } else {
             SettingsDetailView(title: title)
@@ -166,6 +172,13 @@ struct SettingsRow: View { // Zeile für eine Einstellung
             .sheet(isPresented: $showDeleteAccountSheet) {
                 DeleteAccountSheet()
             }
+        } else if title == "Hilfe-Center" {
+            Button {
+                tutorial.restart()
+                dismiss()
+            } label: {
+                rowContent(showChevron: true)
+            }
         } else {
             NavigationLink(destination: destination) { // Klickbarer Navigations-Link
                 rowContent(showChevron: true)
@@ -173,27 +186,30 @@ struct SettingsRow: View { // Zeile für eine Einstellung
         }
     }
 
+    @ViewBuilder
     private func rowContent(showChevron: Bool) -> some View {
-            HStack(spacing: 18) {
-                Image(systemName: icon) // Icon anzeigen
-                    .font(.title2)
-                    .frame(width: 30)
-                    .foregroundColor(.black)
+        let content = HStack(spacing: 18) {
+            Image(systemName: icon) // Icon anzeigen
+                .font(.title2)
+                .frame(width: 30)
+                .foregroundColor(.black)
 
-                Text(title) // Titel anzeigen
-                    .font(.title3)
-                    .foregroundColor(.black)
+            Text(title) // Titel anzeigen
+                .font(.title3)
+                .foregroundColor(.black)
 
-                Spacer() // Abstand rechts
+            Spacer() // Abstand rechts
 
-                if showChevron {
-                    Image(systemName: "chevron.right") // Pfeil rechts
-                        .foregroundColor(.gray)
-                }
+            if showChevron {
+                Image(systemName: "chevron.right") // Pfeil rechts
+                    .foregroundColor(.gray)
             }
-            .padding() // Innenabstand
-            .background(Color.green.opacity(0.18)) // Hintergrundfarbe
-            .cornerRadius(16) // Abgerundete Ecken
+        }
+        .padding() // Innenabstand
+        .background(Color.green.opacity(0.18)) // Hintergrundfarbe
+        .cornerRadius(16) // Abgerundete Ecken
+
+        content
     }
 }
 
@@ -314,5 +330,6 @@ struct reminderView: View { // Dummy-ReminderView, falls separat gebraucht
     NavigationStack {
         SettingsView()
             .environmentObject(AppData())
+            .environmentObject(AppTutorialController())
     }
 }

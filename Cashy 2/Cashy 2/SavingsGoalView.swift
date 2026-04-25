@@ -3,6 +3,8 @@ import Charts
 
 struct SavingsGoalView: View {
     @EnvironmentObject private var appData: AppData
+    @EnvironmentObject private var tutorial: AppTutorialController
+    @Environment(\.dismiss) private var dismiss
 
     @State private var selectedTimeframe: Timeframe = .months
 
@@ -44,6 +46,7 @@ struct SavingsGoalView: View {
             .padding()
             .background(Color.white.opacity(0.35))
             .cornerRadius(20)
+            .tutorialTarget(.settingsStatsDetails)
 
             Picker("Zeitraum", selection: $selectedTimeframe) {
                 ForEach(Timeframe.allCases, id: \.self) { timeframe in
@@ -72,6 +75,18 @@ struct SavingsGoalView: View {
         }
         .padding()
         .background(AppColors.lightBackground)
+        .onAppear {
+            tutorial.completeNavigation(from: .homeStatsButton, to: .settingsStatsDetails)
+        }
+        .onChange(of: tutorial.shouldReturnToHome) { _, shouldReturnToHome in
+            if shouldReturnToHome {
+                dismiss()
+            }
+        }
+        .navigationDestination(isPresented: $tutorial.navigateToReminders) {
+            ReminderView()
+        }
+        .tutorialSpotlightHost()
     }
 }
 
@@ -104,4 +119,5 @@ private struct InfoCard: View {
 #Preview {
     SavingsGoalView()
         .environmentObject(AppData())
+        .environmentObject(AppTutorialController())
 }

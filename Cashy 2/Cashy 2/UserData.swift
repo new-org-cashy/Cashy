@@ -130,6 +130,54 @@ private struct StoredAppState: Codable {
     let savingsUpdates: [SavingsUpdate]
     let categories: [StoredCategory]
     let hasCompletedOnboarding: Bool
+    let hasSeenAppTutorial: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case selectedCurrencyName
+        case selectedCurrencyCode
+        case savingsGoal
+        case savedAmount
+        case badHabitAnswer
+        case savingsUpdates
+        case categories
+        case hasCompletedOnboarding
+        case hasSeenAppTutorial
+    }
+
+    init(
+        selectedCurrencyName: String,
+        selectedCurrencyCode: String,
+        savingsGoal: Double,
+        savedAmount: Double,
+        badHabitAnswer: String,
+        savingsUpdates: [SavingsUpdate],
+        categories: [StoredCategory],
+        hasCompletedOnboarding: Bool,
+        hasSeenAppTutorial: Bool
+    ) {
+        self.selectedCurrencyName = selectedCurrencyName
+        self.selectedCurrencyCode = selectedCurrencyCode
+        self.savingsGoal = savingsGoal
+        self.savedAmount = savedAmount
+        self.badHabitAnswer = badHabitAnswer
+        self.savingsUpdates = savingsUpdates
+        self.categories = categories
+        self.hasCompletedOnboarding = hasCompletedOnboarding
+        self.hasSeenAppTutorial = hasSeenAppTutorial
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        selectedCurrencyName = try container.decode(String.self, forKey: .selectedCurrencyName)
+        selectedCurrencyCode = try container.decode(String.self, forKey: .selectedCurrencyCode)
+        savingsGoal = try container.decode(Double.self, forKey: .savingsGoal)
+        savedAmount = try container.decode(Double.self, forKey: .savedAmount)
+        badHabitAnswer = try container.decode(String.self, forKey: .badHabitAnswer)
+        savingsUpdates = try container.decode([SavingsUpdate].self, forKey: .savingsUpdates)
+        categories = try container.decode([StoredCategory].self, forKey: .categories)
+        hasCompletedOnboarding = try container.decode(Bool.self, forKey: .hasCompletedOnboarding)
+        hasSeenAppTutorial = try container.decodeIfPresent(Bool.self, forKey: .hasSeenAppTutorial) ?? false
+    }
 }
 
 final class AppData: ObservableObject {
@@ -182,6 +230,11 @@ final class AppData: ObservableObject {
     }
 
     var hasCompletedOnboarding = false {
+        willSet { objectWillChange.send() }
+        didSet { persistCurrentUserState() }
+    }
+
+    var hasSeenAppTutorial = false {
         willSet { objectWillChange.send() }
         didSet { persistCurrentUserState() }
     }
@@ -329,6 +382,18 @@ final class AppData: ObservableObject {
 
     func completeOnboarding() {
         hasCompletedOnboarding = true
+    }
+
+    func markAppTutorialSeen() {
+        hasSeenAppTutorial = true
+    }
+
+    func clearHistoryAndStats() {
+        savedAmount = 0
+        savingsUpdates = []
+        categories = categories.map { category in
+            Category(name: category.name, color: category.color, expenses: [])
+        }
     }
 
     func saveBadHabit(_ text: String) {
@@ -501,6 +566,7 @@ final class AppData: ObservableObject {
             )
         }
         hasCompletedOnboarding = defaultState.hasCompletedOnboarding
+        hasSeenAppTutorial = defaultState.hasSeenAppTutorial
     }
 
     private func restoreAppState(for email: String) {
@@ -522,6 +588,7 @@ final class AppData: ObservableObject {
             )
         }
         hasCompletedOnboarding = storedState.hasCompletedOnboarding
+        hasSeenAppTutorial = storedState.hasSeenAppTutorial
     }
 
     private func makeStoredAppState() -> StoredAppState {
@@ -539,7 +606,8 @@ final class AppData: ObservableObject {
                     expenses: $0.expenses
                 )
             },
-            hasCompletedOnboarding: hasCompletedOnboarding
+            hasCompletedOnboarding: hasCompletedOnboarding,
+            hasSeenAppTutorial: hasSeenAppTutorial
         )
     }
 
@@ -558,7 +626,8 @@ final class AppData: ObservableObject {
                     expenses: $0.expenses
                 )
             },
-            hasCompletedOnboarding: false
+            hasCompletedOnboarding: false,
+            hasSeenAppTutorial: false
         )
     }
 

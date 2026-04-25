@@ -4,6 +4,7 @@ import SwiftUI
 @main
 struct Cashy_2_App: App {
     @StateObject private var appData = AppData()
+    @StateObject private var tutorial = AppTutorialController()
 
     var body: some Scene {
         WindowGroup {
@@ -16,11 +17,18 @@ struct Cashy_2_App: App {
                             Fragen()
                         }
                     }
+                    .id(appData.hasCompletedOnboarding ? "main-app-flow" : "onboarding-flow")
                 } else {
                     WelcomeView()
                 }
             }
-                .environmentObject(appData)
+            .environmentObject(appData)
+            .environmentObject(tutorial)
+            .onChange(of: appData.isLoggedIn) { _, isLoggedIn in
+                if !isLoggedIn {
+                    tutorial.reset()
+                }
+            }
         }
     }
 }

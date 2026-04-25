@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ContentView: View {
     @EnvironmentObject private var appData: AppData
+    @EnvironmentObject private var tutorial: AppTutorialController
     @Environment(\.dismiss) private var dismiss
 
     @State private var selectedCategoryID: Category.ID?
@@ -32,6 +33,7 @@ struct ContentView: View {
                         .foregroundColor(.white)
                         .cornerRadius(24)
                     }
+                    .tutorialTarget(.expenseViewButton)
                     .buttonStyle(.plain)
                 }
                 .padding(.horizontal)
@@ -73,6 +75,7 @@ struct ContentView: View {
                             .padding(.horizontal)
                         }
                     }
+                    .tutorialTarget(.expenseCategories)
                 }
 
                 Spacer()
@@ -118,6 +121,16 @@ struct ContentView: View {
         } message: {
             Text("Der neue Name wird auf \(renameDraft.isEmpty ? "die Kategorie" : renameDraft) geändert.")
         }
+        .navigationDestination(isPresented: $tutorial.navigateToExpenseChart) {
+            ViewPage()
+        }
+        .onAppear {
+            tutorial.completeNavigation(from: .homeExpensesButton, to: .expenseCategories)
+            if tutorial.shouldReturnToHome {
+                dismiss()
+            }
+        }
+        .tutorialSpotlightHost()
     }
 }
 
@@ -345,6 +358,8 @@ struct NewCategoryView: View {
 
 struct ViewPage: View {
     @EnvironmentObject private var appData: AppData
+    @EnvironmentObject private var tutorial: AppTutorialController
+    @Environment(\.dismiss) private var dismiss
 
     var total: Double {
         appData.categories.map { $0.amount }.reduce(0, +)
@@ -363,6 +378,7 @@ struct ViewPage: View {
 
                 DonutChart(categories: appData.categories)
                     .frame(width: 220, height: 220)
+                    .tutorialTarget(.expenseChart)
 
                 ScrollView {
                     VStack(spacing: 14) {
@@ -409,6 +425,20 @@ struct ViewPage: View {
                 Spacer()
             }
         }
+        .onChange(of: tutorial.currentStep) { _, newStep in
+            if newStep == .homeStatsButton {
+                dismiss()
+            }
+        }
+        .onChange(of: tutorial.shouldReturnToHome) { _, shouldReturnToHome in
+            if shouldReturnToHome {
+                dismiss()
+            }
+        }
+        .onAppear {
+            tutorial.completeNavigation(from: .expenseViewButton, to: .expenseChart)
+        }
+        .tutorialSpotlightHost()
     }
 }
 
@@ -462,5 +492,6 @@ struct DonutChart: View {
     NavigationStack {
         ContentView()
             .environmentObject(AppData())
+            .environmentObject(AppTutorialController())
     }
 }

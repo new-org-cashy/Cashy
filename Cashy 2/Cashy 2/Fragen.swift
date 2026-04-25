@@ -233,10 +233,9 @@ struct BadHabitView: View {
 
 struct SparZielView: View {
     @EnvironmentObject private var appData: AppData
-
+    
     @State private var savingsGoal = ""
-    @State private var goToIncome = false
-
+    
     var body: some View {
         VStack(alignment: .leading, spacing: 25) {
             Text("Was ist dein Sparziel?")
@@ -255,7 +254,6 @@ struct SparZielView: View {
                     appData.updateSavingsGoal(goalValue)
                 }
                 appData.completeOnboarding()
-                goToIncome = true
             } label: {
                 Text("Weiter")
                     .fontWeight(.semibold)
@@ -272,9 +270,6 @@ struct SparZielView: View {
         .padding(.top, 20)
         .background(Color.backgroundGreen)
         .ignoresSafeArea(.container, edges: .bottom)
-        .navigationDestination(isPresented: $goToIncome) {
-            HomeView()
-        }
     }
 }
 
