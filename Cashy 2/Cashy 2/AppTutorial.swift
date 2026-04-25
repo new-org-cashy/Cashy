@@ -87,7 +87,7 @@ enum AppTutorialStep: Int, CaseIterable, Identifiable {
     var message: String {
         switch self {
         case .homeSavings:
-            return "Hier siehst du jederzeit, wie viel du bereits gespart hast. Ein Tipp darauf öffnet die Eingabe für einen neuen Sparbetrag."
+            return "Hier siehst du jederzeit, wie viel du bereits gespart hast. Ein Klick darauf öffnet die Eingabe für einen neuen Sparbetrag."
         case .homeGoal:
             return "Hier kannst du dein aktuelles Sparziel ändern. Der neue Wert wird direkt in Home und in den Statistiken übernommen."
         case .homeHistory:
