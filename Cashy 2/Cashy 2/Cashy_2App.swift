@@ -17,7 +17,7 @@ struct Cashy_2_App: App {
                         }
                     }
                 } else {
-                    LoginView()
+                    WelcomeView()
                 }
             }
                 .environmentObject(appData)
